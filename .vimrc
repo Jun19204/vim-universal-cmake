@@ -1,6 +1,6 @@
 " =================================================================
 " C/C++ Vim Configuration
-" C++20/23 | CMake | CTest | GoogleTest | ASan | Valgrind | GDB
+" C++20/23 | CMake Presets | CTest | GoogleTest | ASan | Valgrind | GDB
 " =================================================================
 
 set nocompatible
@@ -10,7 +10,7 @@ scriptencoding utf-8
 set ttimeout ttimeoutlen=40
 set isfname+=~,*,?,[,],-
 set path=.,/usr/include/c++/*,/usr/include,/usr/local/include,,
-set suffixesadd=.h,.c,.cc,.C,.cpp,.hpp
+set suffixesadd=.h,.c,.cc,.C,.cpp,.cxx,.hpp,.hxx
 set ignorecase smartcase autoread
 set splitbelow splitright
 
@@ -76,27 +76,31 @@ let g:indentLine_color_gui = '#504945'
 " =================================================================
 let s:selected_targets = {}
 let s:gdb_bufnr = -1
+let s:gdb_job = -1
 
 " =================================================================
-" Build Profiles
+" CMake Presets
+"
+" CMakePresets.json example:
+"
+" configurePresets:
+"   asan-debug
+"   valgrind-debug
+"
+" buildPresets:
+"   asan-debug
+"   valgrind-debug
+"
 " =================================================================
 let s:profiles = {
       \ 'asan': {
-      \   'build_dir': 'build-asan',
-      \   'cmake_args': [
-      \     '-DCMAKE_BUILD_TYPE=Debug',
-      \     '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
-      \     '-DUSE_SANITIZER=ON'
-      \   ],
+      \   'configure_preset': 'asan-debug',
+      \   'build_preset': 'asan-debug',
       \   'compile_commands': 1
       \ },
       \ 'valgrind': {
-      \   'build_dir': 'build-valgrind',
-      \   'cmake_args': [
-      \     '-DCMAKE_BUILD_TYPE=Debug',
-      \     '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
-      \     '-DUSE_SANITIZER=OFF'
-      \   ],
+      \   'configure_preset': 'valgrind-debug',
+      \   'build_preset': 'valgrind-debug',
       \   'compile_commands': 0
       \ }
       \ }
@@ -121,31 +125,71 @@ endfunction
 function! s:GetProjectRoot() abort
   let l:file = expand('%:p')
   let l:start = empty(l:file) ? getcwd() : fnamemodify(l:file, ':h')
-
-  " 가장 가까운 CMake 프로젝트를 우선
-  let l:root = s:FindUp(l:start, 'CMakeLists.txt')
-  if !empty(l:root)
-    return resolve(l:root)
-  endif
-
-  " CMakePresets 기반 프로젝트
   let l:root = s:FindUp(l:start, 'CMakePresets.json')
   if !empty(l:root)
     return resolve(l:root)
   endif
-
-  " CMakePresets가 없어도 .git 루트를 fallback으로 사용
+  let l:root = s:FindUp(l:start, 'CMakeLists.txt')
+  if !empty(l:root)
+    return resolve(l:root)
+  endif
   let l:root = s:FindUpDir(l:start, '.git')
   if !empty(l:root)
     return resolve(l:root)
   endif
-
   return resolve(fnamemodify(getcwd(), ':p'))
 endfunction
 
+function! s:InProject(cmd) abort
+  return 'cd ' . shellescape(s:GetProjectRoot()) . ' && ' . a:cmd
+endfunction
+
+" =================================================================
+" Preset Information
+" =================================================================
+function! s:GetConfigurePreset(name) abort
+  let l:p = s:GetProfile(a:name)
+  return get(l:p, 'configure_preset', '')
+endfunction
+
+function! s:GetBuildPreset(name) abort
+  let l:p = s:GetProfile(a:name)
+  return get(l:p, 'build_preset', '')
+endfunction
+
+function! s:GetPresetBinaryDir(profile) abort
+  let l:root = s:GetProjectRoot()
+  let l:file = l:root . '/CMakePresets.json'
+  if !filereadable(l:file)
+    return ''
+  endif
+  try
+    let l:data = json_decode(join(readfile(l:file), "\n"))
+  catch
+    return ''
+  endtry
+  let l:name = s:GetConfigurePreset(a:profile)
+  for l:preset in get(l:data, 'configurePresets', [])
+    if get(l:preset, 'name', '') ==# l:name
+      let l:dir = get(l:preset, 'binaryDir', '')
+      if empty(l:dir)
+        return ''
+      endif
+      let l:dir = substitute(l:dir, '\${sourceDir}', l:root, 'g')
+      let l:dir = substitute(l:dir, '\${sourceParentDir}', fnamemodify(l:root, ':h'), 'g')
+      return resolve(fnamemodify(l:dir, ':p'))
+    endif
+  endfor
+  return ''
+endfunction
+
 function! s:GetBuildDir(profile) abort
-  let l:p = s:GetProfile(a:profile)
-  return empty(l:p) ? '' : s:GetProjectRoot() . '/' . l:p.build_dir
+  let l:dir = s:GetPresetBinaryDir(a:profile)
+  if !empty(l:dir)
+    return l:dir
+  endif
+  let l:root = s:GetProjectRoot()
+  return a:profile ==# 'asan' ? l:root . '/build-asan' : l:root . '/build-valgrind'
 endfunction
 
 " =================================================================
@@ -162,8 +206,8 @@ function! s:GetCodeModel(build_dir) abort
   if empty(l:files)
     return ''
   endif
-  call sort(l:files, { a, b -> getftime(a) - getftime(b) })
-  return l:files[-1]
+  call sort(l:files, { a, b -> getftime(a) < getftime(b) ? 1 : -1 })
+  return l:files[0]
 endfunction
 
 function! s:ReadJSON(file) abort
@@ -179,9 +223,12 @@ endfunction
 
 function! s:GetExecutableTargets(build_dir) abort
   let l:model = s:GetCodeModel(a:build_dir)
+  if empty(l:model)
+    return []
+  endif
   let l:data = s:ReadJSON(l:model)
   let l:targets = []
-
+  let l:seen = {}
   for l:config in get(l:data, 'configurations', [])
     for l:ref in get(l:config, 'targets', [])
       let l:file = fnamemodify(l:model, ':h') . '/' . get(l:ref, 'jsonFile', '')
@@ -189,40 +236,31 @@ function! s:GetExecutableTargets(build_dir) abort
       if get(l:target, 'type', '') !=# 'EXECUTABLE'
         continue
       endif
-
       let l:artifacts = get(l:target, 'artifacts', [])
       if empty(l:artifacts)
         continue
       endif
-
       let l:path = get(l:artifacts[0], 'path', '')
+      if empty(l:path)
+        continue
+      endif
       if l:path !~# '^/'
         let l:path = a:build_dir . '/' . l:path
       endif
-
       let l:path = resolve(fnamemodify(l:path, ':p'))
-      if executable(l:path)
-        call add(l:targets, {'name': get(l:target, 'name', ''), 'path': l:path})
+      if executable(l:path) && !has_key(l:seen, l:path)
+        let l:name = get(l:target, 'name', fnamemodify(l:path, ':t'))
+        call add(l:targets, {'name': l:name, 'path': l:path})
+        let l:seen[l:path] = 1
       endif
     endfor
   endfor
-
   return l:targets
 endfunction
 
 " =================================================================
 " CTest
 " =================================================================
-function! s:GetCTestJSON(build_dir) abort
-  if !isdirectory(a:build_dir)
-    return {}
-  endif
-
-  let l:cmd = 'ctest --test-dir ' . shellescape(a:build_dir) . ' --show-only=json-v1'
-  let l:output = system(l:cmd)
-  return v:shell_error == 0 ? s:DecodeCTestJSON(l:output) : {}
-endfunction
-
 function! s:DecodeCTestJSON(output) abort
   try
     return json_decode(a:output)
@@ -230,6 +268,15 @@ function! s:DecodeCTestJSON(output) abort
     echoerr 'CTest JSON 파싱 실패'
     return {}
   endtry
+endfunction
+
+function! s:GetCTestJSON(build_dir) abort
+  if !isdirectory(a:build_dir)
+    return {}
+  endif
+  let l:cmd = s:InProject('ctest --test-dir ' . shellescape(a:build_dir) . ' --show-only=json-v1')
+  let l:output = system(l:cmd)
+  return v:shell_error == 0 ? s:DecodeCTestJSON(l:output) : {}
 endfunction
 
 function! s:NormalizePath(path, base) abort
@@ -246,85 +293,82 @@ function! s:GetTestTargets(build_dir) abort
   if empty(get(l:ctest, 'tests', [])) || empty(l:executables)
     return []
   endif
-
   let l:map = {}
   for l:target in l:executables
-    let l:map[l:target.path] = {
-          \ 'name': l:target.name,
-          \ 'path': l:target.path,
-          \ 'tests': []
-          \ }
+    let l:map[l:target.path] = {'name': l:target.name, 'path': l:target.path, 'tests': []}
   endfor
-
   let l:default = resolve(fnamemodify(a:build_dir, ':p'))
   for l:test in l:ctest.tests
     let l:command = get(l:test, 'command', [])
     if empty(l:command)
       continue
     endif
-
     let l:base = get(l:test, 'workingDirectory', l:default)
     let l:path = s:NormalizePath(l:command[0], l:base)
-
     if has_key(l:map, l:path)
       call add(l:map[l:path].tests, get(l:test, 'name', '(unnamed)'))
+      continue
     endif
+    let l:name = fnamemodify(l:path, ':t')
+    for l:target in l:executables
+      if fnamemodify(l:target.path, ':t') ==# l:name
+        call add(l:map[l:target.path].tests, get(l:test, 'name', '(unnamed)'))
+        break
+      endif
+    endfor
   endfor
-
   return filter(values(l:map), { _, target -> !empty(target.tests) })
 endfunction
 
 " =================================================================
-" Build
+" compile_commands.json
 " =================================================================
 function! s:UpdateCompileCommands(build_dir) abort
-  let l:source = a:build_dir . '/compile_commands.json'
+  let l:source = resolve(a:build_dir . '/compile_commands.json')
   if !filereadable(l:source)
     return
   endif
-
   let l:dest = s:GetProjectRoot() . '/compile_commands.json'
   call system('ln -sfn ' . shellescape(l:source) . ' ' . shellescape(l:dest))
-
   if v:shell_error != 0
     echoerr 'compile_commands.json 심볼릭 링크 생성 실패'
   endif
 endfunction
 
+" =================================================================
+" Build
+" =================================================================
 function! s:Build(profile) abort
   let l:p = s:GetProfile(a:profile)
   if empty(l:p)
     echoerr '알 수 없는 Build Profile: ' . a:profile
     return 0
   endif
-
-  let l:root = s:GetProjectRoot()
-  let l:build = l:root . '/' . l:p.build_dir
-
-  call mkdir(l:build, 'p')
-  call s:PrepareFileAPI(l:build)
-
-  echo 'Project: ' . l:root
+  let l:configure = s:GetConfigurePreset(a:profile)
+  let l:build = s:GetBuildPreset(a:profile)
+  if empty(l:configure) || empty(l:build)
+    echoerr 'CMake preset 설정이 없습니다.'
+    return 0
+  endif
+  let l:build_dir = s:GetBuildDir(a:profile)
+  if !empty(l:build_dir)
+    call mkdir(l:build_dir, 'p')
+    call s:PrepareFileAPI(l:build_dir)
+  endif
+  echo 'Project: ' . s:GetProjectRoot()
   echo 'Profile: ' . a:profile
-  echo 'Build: ' . l:build
-
-  let l:cmd = 'cmake -S ' . shellescape(l:root)
-        \ . ' -B ' . shellescape(l:build)
-        \ . ' ' . join(l:p.cmake_args, ' ')
-        \ . ' && cmake --build ' . shellescape(l:build)
-
+  echo 'Configure Preset: ' . l:configure
+  echo 'Build Preset: ' . l:build
+  let l:cmd = s:InProject('cmake --preset ' . shellescape(l:configure) . ' && cmake --build --preset ' . shellescape(l:build))
   execute '!' . l:cmd
-
   if v:shell_error != 0
     redraw!
     echoerr 'CMake 빌드 실패'
     return 0
   endif
-
   if get(l:p, 'compile_commands', 0)
-    call s:UpdateCompileCommands(l:build)
+    call s:UpdateCompileCommands(s:GetBuildDir(a:profile))
   endif
-
   redraw!
   echo 'CMake 빌드 성공'
   return 1
@@ -335,10 +379,7 @@ endfunction
 " =================================================================
 function! s:GetTargets(profile, kind) abort
   let l:build = s:GetBuildDir(a:profile)
-  if a:kind ==# 'test'
-    return s:GetTestTargets(l:build)
-  endif
-  return s:GetExecutableTargets(l:build)
+  return a:kind ==# 'test' ? s:GetTestTargets(l:build) : s:GetExecutableTargets(l:build)
 endfunction
 
 function! s:SelectTarget(profile, kind, force) abort
@@ -347,7 +388,6 @@ function! s:SelectTarget(profile, kind, force) abort
     echoerr '실행 가능한 target을 찾을 수 없습니다.'
     return {}
   endif
-
   let l:key = a:profile . ':' . a:kind
   if !a:force && has_key(s:selected_targets, l:key)
     for l:target in l:targets
@@ -356,29 +396,22 @@ function! s:SelectTarget(profile, kind, force) abort
       endif
     endfor
   endif
-
   if len(l:targets) == 1
     let s:selected_targets[l:key] = l:targets[0].name
     return l:targets[0]
   endif
-
   let l:menu = ['Target 선택:']
   let l:index = 1
-
   for l:target in l:targets
-    let l:label = a:kind ==# 'test'
-          \ ? printf('%d. %s [%d tests]', l:index, l:target.name, len(l:target.tests))
-          \ : printf('%d. %s', l:index, l:target.name)
+    let l:label = a:kind ==# 'test' ? printf('%d. %s [%d tests]', l:index, l:target.name, len(l:target.tests)) : printf('%d. %s', l:index, l:target.name)
     call add(l:menu, l:label)
     let l:index += 1
   endfor
-
   let l:choice = inputlist(l:menu)
   if l:choice <= 0 || l:choice > len(l:targets)
     echo 'Target 선택 취소'
     return {}
   endif
-
   let l:target = l:targets[l:choice - 1]
   let s:selected_targets[l:key] = l:target.name
   return l:target
@@ -399,17 +432,13 @@ function! s:RunExecutable(profile, command) abort
   if !s:Build(a:profile)
     return
   endif
-
   let l:target = s:SelectTarget(a:profile, 'executable', 0)
   if empty(l:target)
     return
   endif
-
-  let l:cmd = empty(a:command) ? shellescape(l:target.path)
-        \ : a:command . ' ' . shellescape(l:target.path)
-
+  let l:cmd = empty(a:command) ? shellescape(l:target.path) : a:command . ' ' . shellescape(l:target.path)
   echo 'Run: ' . l:target.name
-  execute '!' . l:cmd
+  execute '!' . s:InProject(l:cmd)
 endfunction
 
 function! s:RunASan() abort
@@ -417,33 +446,24 @@ function! s:RunASan() abort
 endfunction
 
 function! s:RunValgrind() abort
-  call s:RunExecutable(
-        \ 'valgrind',
-        \ 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes'
-        \ )
+  call s:RunExecutable('valgrind', 'valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes')
 endfunction
 
 function! s:RunCTest(pattern) abort
   if !s:Build('asan')
     return
   endif
-
-  let l:cmd = 'ctest --test-dir ' . shellescape(s:GetBuildDir('asan'))
+  let l:cmd = 'ctest --test-dir ' . shellescape(s:GetBuildDir('asan')) . ' --output-on-failure'
   if !empty(a:pattern)
     let l:cmd .= ' -R ' . shellescape(a:pattern)
   endif
-
-  execute '!' . l:cmd . ' --output-on-failure'
+  execute '!' . s:InProject(l:cmd)
 endfunction
 
 function! s:RunCTestCurrentModule() abort
-  let l:dir = expand('%:p:h')
-  let l:module = fnamemodify(l:dir, ':t')
-
-  if l:module ==# 'tests'
-    let l:module = fnamemodify(l:dir, ':h:t')
-  endif
-
+  let l:file = expand('%:p')
+  let l:base = fnamemodify(l:file, ':t:r')
+  let l:module = substitute(l:base, '_test$', '', '')
   call s:RunCTest(l:module)
 endfunction
 
@@ -451,10 +471,9 @@ function! s:RunGTest() abort
   if !s:Build('asan')
     return
   endif
-
   let l:target = s:SelectTarget('asan', 'test', 0)
   if !empty(l:target)
-    execute '!' . shellescape(l:target.path)
+    execute '!' . s:InProject(shellescape(l:target.path))
   endif
 endfunction
 
@@ -463,6 +482,7 @@ endfunction
 " =================================================================
 function! s:GdbExitHandler(job, status) abort
   let s:gdb_bufnr = -1
+  let s:gdb_job = -1
   echo 'GDB 종료'
 endfunction
 
@@ -470,36 +490,28 @@ function! s:RunGDB() abort
   if !s:Build('asan')
     return
   endif
-
   let l:target = s:SelectTarget('asan', 'executable', 0)
   if empty(l:target)
     return
   endif
-
   botright 12split
-  let s:gdb_bufnr = term_start(
-        \ ['gdb', '-q', l:target.path],
-        \ {
-        \   'exit_cb': function('s:GdbExitHandler'),
-        \   'curwin': 1,
-        \   'term_name': 'gdb-inferior'
-        \ }
-        \ )
-
-  call term_sendkeys(s:gdb_bufnr, "break main\nrun\n")
+  execute 'enew'
+  let s:gdb_bufnr = bufnr('%')
+  let s:gdb_job = term_start(['gdb', '-q', l:target.path], {'curwin': 1, 'exit_cb': function('s:GdbExitHandler'), 'term_name': 'gdb'})
+  call term_sendkeys(s:gdb_job, "break main\nrun\n")
 endfunction
 
 function! s:SendGdbCommand(cmd) abort
-  if s:gdb_bufnr != -1 && bufexists(s:gdb_bufnr)
-    call term_sendkeys(s:gdb_bufnr, a:cmd . "\n")
+  if s:gdb_job != -1 && job_status(s:gdb_job) ==# 'run'
+    call term_sendkeys(s:gdb_job, a:cmd . "\n")
   else
     echo '실행 중인 GDB 터미널을 찾을 수 없습니다.'
   endif
 endfunction
 
 function! s:SetBreakpoint() abort
-  let l:file = expand('%:t')
-  call s:SendGdbCommand('break ' . l:file . ':' . line('.'))
+  let l:file = expand('%:p')
+  call s:SendGdbCommand('break ' . fnameescape(l:file) . ':' . line('.'))
 endfunction
 
 " =================================================================
@@ -513,6 +525,18 @@ function! s:FormatCode() abort
     echo 'LSP Formatter 미연동: gg=G 적용'
   endif
 endfunction
+
+" =================================================================
+" User Commands
+" =================================================================
+command! CMakeBuildASan call <SID>Build('asan')
+command! CMakeBuildValgrind call <SID>Build('valgrind')
+command! CMakeRunASan call <SID>RunASan()
+command! CMakeRunValgrind call <SID>RunValgrind()
+command! CTestAll call <SID>RunCTest('')
+command! CTestCurrent call <SID>RunCTestCurrentModule()
+command! GTestRun call <SID>RunGTest()
+command! GDBRun call <SID>RunGDB()
 
 " =================================================================
 " Leader / Build / Test
@@ -595,11 +619,11 @@ inoremap <expr> <S-TAB> coc#pum#visible()
 " =================================================================
 augroup FSwitchPaths
   autocmd!
-  autocmd BufEnter *.cpp,*.cc,*.c
-        \ let b:fswitchdst = 'h,hpp' |
+  autocmd BufEnter *.cpp,*.cc,*.c,*.cxx
+        \ let b:fswitchdst = 'h,hpp,hxx' |
         \ let b:fswitchlocs = 'reg:|src|include|,reg:|src|../include|,../include,.,tests'
-  autocmd BufEnter *.h,*.hpp
-        \ let b:fswitchdst = 'cpp,cc,c' |
+  autocmd BufEnter *.h,*.hpp,*.hxx
+        \ let b:fswitchdst = 'cpp,cc,c,cxx' |
         \ let b:fswitchlocs = 'reg:|include|src|,reg:|include|../src|,../src,.,tests'
 augroup END
 
