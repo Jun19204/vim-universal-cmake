@@ -22,6 +22,22 @@ C++20/23, CMake, CMake Presets, CTest, GoogleTest, ASan/UBSan, Valgrind 및 GDB�
 
 ---
 
+## 설정 적용 Bash 명령어
+- Debian/Ubuntu
+```
+git clone https://github.com/Jun19204/dotfiles.git ~/dotfiles && ~/dotfiles/install_for_debian.sh
+```
+- ArchLinux
+```bash
+git clone https://github.com/Jun19204/dotfiles.git ~/dotfiles && ~/dotfiles/install_for_arch.sh
+```
+- Fedora
+```bash
+git clone https://github.com/Jun19204/dotfiles.git ~/dotfiles && ~/dotfiles/install_for_fedora.sh
+```
+
+---
+
 ## 프로젝트 구조
 
 ```text
