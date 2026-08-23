@@ -617,8 +617,8 @@ Vim 환경에서는 다음과 같은 기능을 사용할 수 있습니다.
 |---|---|
 | `F5` | ASan Preset Build |
 | `F6` | ASan Build + 실행 |
-| `F8` | Valgrind Preset Build |
-| `F9` | Valgrind Build + 실행 |
+| `F7` | Valgrind Preset Build |
+| `F8` | Valgrind Build + 실행 |
 | `<Space>t` | 전체 CTest 실행 |
 | `<Space>f` | 현재 파일 이름 기반 CTest 실행 |
 | `<Space>g` | 등록된 테스트 실행 Target 직접 실행 |
