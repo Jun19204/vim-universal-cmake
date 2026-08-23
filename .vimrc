@@ -545,8 +545,8 @@ let mapleader = ' '
 
 nnoremap <F5> :w<CR>:call <SID>Build('asan')<CR>
 nnoremap <F6> :w<CR>:call <SID>RunASan()<CR>
-nnoremap <F8> :w<CR>:call <SID>Build('valgrind')<CR>
-nnoremap <F9> :w<CR>:call <SID>RunValgrind()<CR>
+nnoremap <F7> :w<CR>:call <SID>Build('valgrind')<CR>
+nnoremap <F8> :w<CR>:call <SID>RunValgrind()<CR>
 
 nnoremap <leader>r :call <SID>ChooseTarget('asan', 'executable')<CR>
 nnoremap <leader>t :w<CR>:call <SID>RunCTest('')<CR>
