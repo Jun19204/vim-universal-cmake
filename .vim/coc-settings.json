@@ -1,15 +1,6 @@
 {
-  "clangd.arguments": [
-    "--compile-commands-dir=build-asan",
-    "--background-index",
-    "--clang-tidy",
-    "--completion-style=detailed",
-    "--header-insertion=iwyu",
-    "--fallback-style=llvm",
-    "-query-driver=/usr/bin/g++"
-  ],
-
   "inlayHint.enable": true,
+
   "clangd.inlayHints.enable": true,
   "clangd.inlayHints.designators": true,
   "clangd.inlayHints.parameterNames": true,
@@ -19,7 +10,16 @@
 
   "suggest.noselect": true,
   "suggest.enablePreview": true,
-  "suggest.floatConfig": { "border": true },
-  "diagnostic.floatConfig": { "border": true },
-  "hover.floatConfig": { "border": true }
+
+  "suggest.floatConfig": {
+    "border": true
+  },
+
+  "diagnostic.floatConfig": {
+    "border": true
+  },
+
+  "hover.floatConfig": {
+    "border": true
+  }
 }
