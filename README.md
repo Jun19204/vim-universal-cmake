@@ -51,6 +51,34 @@ This allows the same Vim environment to work with:
 
 ---
 
+# Installation
+
+Clone the repository anywhere:
+
+```bash
+git clone https://github.com/Jun19204/dotfiles.git
+cd ~/dotfiles
+```
+
+Run the installer:
+
+```bash
+chmod +x install_for_fedora.sh
+./install_for_fedora.sh
+```
+
+The installer automatically detects the repository location and configures:
+
+- `.vimrc`
+- `coc-settings.json`
+- `universal_cmake.vim`
+- vim-plug
+- Vim plugins
+- coc-clangd
+- C/C++ development tools
+
+---
+
 # Project Root Detection
 
 The project root is automatically detected.
@@ -387,34 +415,6 @@ Key:
 ```text
 F4
 ```
-
----
-
-# Installation
-
-Clone the repository anywhere:
-
-```bash
-git clone <YOUR_REPOSITORY_URL>
-cd <REPOSITORY_NAME>
-```
-
-Run the installer:
-
-```bash
-chmod +x install_for_fedora.sh
-./install_for_fedora.sh
-```
-
-The installer automatically detects the repository location and configures:
-
-- `.vimrc`
-- `coc-settings.json`
-- `universal_cmake.vim`
-- vim-plug
-- Vim plugins
-- coc-clangd
-- C/C++ development tools
 
 ---
 
