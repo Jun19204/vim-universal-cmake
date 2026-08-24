@@ -19,6 +19,34 @@ The goal of this configuration is to provide a lightweight C/C++ development wor
 
 ---
 
+# Installation
+
+Clone the repository anywhere:
+
+```bash
+git clone https://github.com/Jun19204/dotfiles.git
+cd ~/dotfiles
+```
+
+Run the installer:
+
+```bash
+chmod +x install_for_fedora.sh
+./install_for_fedora.sh
+```
+
+The installer automatically detects the repository location and configures:
+
+- `.vimrc`
+- `coc-settings.json`
+- `universal_cmake.vim`
+- vim-plug
+- Vim plugins
+- coc-clangd
+- C/C++ development tools
+
+---
+
 # Features
 
 ## CMake-based workflow
@@ -48,34 +76,6 @@ This allows the same Vim environment to work with:
 - Release builds
 - AddressSanitizer builds
 - CTest projects
-
----
-
-# Installation
-
-Clone the repository anywhere:
-
-```bash
-git clone https://github.com/Jun19204/dotfiles.git
-cd ~/dotfiles
-```
-
-Run the installer:
-
-```bash
-chmod +x install_for_fedora.sh
-./install_for_fedora.sh
-```
-
-The installer automatically detects the repository location and configures:
-
-- `.vimrc`
-- `coc-settings.json`
-- `universal_cmake.vim`
-- vim-plug
-- Vim plugins
-- coc-clangd
-- C/C++ development tools
 
 ---
 
