@@ -1,24 +1,24 @@
 # vim-universal-cmake
 
-" A universal CMake workflow for modern C/C++ development in Vim "
+> A universal CMake workflow for modern C/C++ development in Vim.
 
-CMake를 중심으로 구성한 **Vim 기반 Modern C/C++20/23 Development Environment**입니다.
+This repository provides a **modern Vim-based C/C++20/23 development environment built around CMake**.
 
-이것은 다음 환경을 하나의 workflow로 통합하는 것을 목표로 합니다.
+Its goal is to integrate the following tools into a single workflow:
 
 > **Vim + CMake + C++20/23 + clangd + CoC + CTest + GDB + Valgrind + Sanitizers**
 
-핵심 아이디어는 단순합니다.
+The core idea is simple:
 
-> **Vim이 빌드 시스템을 관리하지 않는다. CMake가 프로젝트 설정의 Source of Truth가 되고, Vim은 그 위에서 Configure, Build, Run, Test, Debug, Analyze를 제공한다.**
+> **Vim does not manage the build system. CMake remains the Source of Truth for project configuration, while Vim provides a unified interface for configuring, building, running, testing, debugging, and analyzing projects.**
 
-따라서 Vim이 직접 다음과 같은 컴파일 명령을 조립하지 않습니다.
+Therefore, Vim does not directly assemble compiler commands such as:
 
 ```bash
 g++ main.cpp -std=c++23 ...
 ```
 
-대신 프로젝트의 기존 CMake 설정을 그대로 사용합니다.
+Instead, it uses the project's existing CMake configuration.
 
 ```text
 CMake
@@ -32,13 +32,13 @@ CMake
  └── Tests
 ```
 
-이 환경은 다양한 CMake 기반 C/C++ 프로젝트를 하나의 Vim 인터페이스로 사용할 수 있도록 설계되었습니다.
+This environment is designed to provide a consistent Vim interface for a wide range of CMake-based C and C++ projects.
 
 ---
 
 # Quick Start
 
-가장 단순한 CMake 프로젝트라면 별도의 Vim 설정 없이 다음과 같이 사용할 수 있습니다.
+For a simple CMake project, no additional project-specific Vim configuration is required.
 
 ```text
 vim src/main.cpp
@@ -52,16 +52,16 @@ F6
 Run
 ```
 
-CMake Presets를 사용하는 프로젝트라면:
+For a project that uses CMake Presets:
 
 ```text
 Space bp
       ↓
-Configure Preset 선택
+Select Configure Preset
       ↓
 Space bb
       ↓
-Build Preset 선택
+Select Build Preset
       ↓
 F5
       ↓
@@ -72,12 +72,12 @@ F6
 Run
 ```
 
-다중 실행 Target을 사용하는 경우:
+For projects with multiple executable Targets:
 
 ```text
 Space bt
       ↓
-Executable Target 선택
+Select Executable Target
       ↓
 F6
       ↓
@@ -86,7 +86,7 @@ Build + Run
 
 ---
 
-# 핵심 구조
+# Architecture
 
 ```text
                     ┌───────────────────┐
@@ -116,59 +116,57 @@ Build + Run
                                Run      GDB    Valgrind
 ```
 
-Vim은 프로젝트의:
+Vim does not separately duplicate or manage the project's:
 
 * Compiler
 * C++ Standard
-* Include Path
+* Include Paths
 * Compile Options
 * Link Options
-* Sanitizer
-* Target
-* Test
+* Sanitizers
+* Targets
+* Tests
 
-를 별도로 중복 관리하지 않습니다.
-
-프로젝트의 CMake 설정이 변경되면 Vim workflow도 해당 설정을 그대로 사용합니다.
+When the project's CMake configuration changes, the Vim workflow uses the updated configuration accordingly.
 
 ---
 
-# 주요 기능
+# Features
 
-| 구성 요소                 | 역할                      |
-| --------------------- | ----------------------- |
-| C++20 / C++23         | Modern C++ 개발           |
-| CMake                 | 빌드 시스템 및 프로젝트 설정        |
-| CMake Presets         | Configure / Build 구성 선택 |
-| Fallback CMake        | Preset이 없는 프로젝트 지원      |
-| CMake File API        | 실제 Target과 Artifact 탐색  |
-| clangd + CoC          | 자동완성, 진단, 코드 탐색         |
-| compile_commands.json | clangd 컴파일 정보 제공        |
-| CTest                 | 프로젝트 테스트                |
-| GDB                   | 터미널 기반 디버깅              |
-| Valgrind              | 메모리 오류 및 누수 검사          |
-| ASan / UBSan          | Sanitizer 기반 런타임 검사     |
-| Coverage              | 코드 커버리지 구성              |
-| FZF                   | 파일 검색                   |
-| NERDTree              | 파일 탐색                   |
-| ripgrep               | 코드 검색                   |
+| Component               | Role                                         |
+| ----------------------- | -------------------------------------------- |
+| C++20 / C++23           | Modern C++ development                       |
+| CMake                   | Build system and project configuration       |
+| CMake Presets           | Configure and Build configuration selection  |
+| Fallback CMake          | Support for projects without Presets         |
+| CMake File API          | Discovery of actual Targets and Artifacts    |
+| clangd + CoC            | Completion, diagnostics, and code navigation |
+| `compile_commands.json` | Compilation database for clangd              |
+| CTest                   | Project testing                              |
+| GDB                     | Terminal-based debugging                     |
+| Valgrind                | Memory error and leak detection              |
+| ASan / UBSan            | Runtime checking with sanitizers             |
+| Coverage                | Code coverage configuration                  |
+| FZF                     | File searching                               |
+| NERDTree                | File exploration                             |
+| ripgrep                 | Code searching                               |
 
-지원하는 프로젝트:
+Supported project types include:
 
-* 단일 실행 파일 CMake 프로젝트
-* 여러 실행 파일을 포함하는 다중 Target 프로젝트
-* `CMakePresets.json` 프로젝트
-* `CMakeUserPresets.json` 프로젝트
-* Debug / Release 구성
-* ASan / UBSan / Coverage 구성
-* CTest 기반 테스트 프로젝트
-* 모노레포 내부의 독립적인 CMake 프로젝트
+* Simple CMake projects with a single executable
+* Projects with multiple executable Targets
+* Projects using `CMakePresets.json`
+* Projects using `CMakeUserPresets.json`
+* Debug / Release configurations
+* ASan / UBSan / Coverage configurations
+* CTest-based test projects
+* Independent CMake projects inside a monorepo
 
 ---
 
-# 설치
+# Installation
 
-저장소를 클론합니다.
+Clone the repository:
 
 ```bash
 git clone https://github.com/Jun19204/vim-universal-cmake ~/vim-universal-cmake
@@ -196,9 +194,9 @@ chmod +x install_for_debian.sh
 ./install_for_debian.sh
 ```
 
-설치 스크립트는 필요한 패키지와 Vim 개발 환경을 구성합니다.
+The installation scripts set up the required packages and the Vim development environment.
 
-주요 구성:
+Main components:
 
 ```text
 .vimrc
@@ -210,7 +208,7 @@ chmod +x install_for_debian.sh
     └── universal_cmake.vim
 ```
 
-일반적으로 다음 도구가 필요합니다.
+The following tools are generally required:
 
 * GCC / Clang
 * CMake
@@ -222,7 +220,7 @@ chmod +x install_for_debian.sh
 
 ---
 
-# 기본 사용법
+# Basic Usage
 
 ## Build
 
@@ -230,10 +228,10 @@ chmod +x install_for_debian.sh
 F5
 ```
 
-동작:
+Workflow:
 
 ```text
-현재 파일 저장
+Save Current File
     ↓
 Project Root Detection
     ↓
@@ -242,9 +240,9 @@ Configure
 CMake Build
 ```
 
-`F5`는 현재 프로젝트의 활성 Build Configuration을 기준으로 Build를 수행합니다.
+`F5` builds the project using the active Build Configuration.
 
-필요한 경우 먼저 Configure를 수행합니다.
+Configuration is performed first when necessary.
 
 ---
 
@@ -254,22 +252,22 @@ CMake Build
 F6
 ```
 
-또는:
+Or:
 
 ```text
 Space br
 ```
 
-동작:
+Workflow:
 
 ```text
-현재 파일 저장
+Save Current File
     ↓
 Build
     ↓
-Executable Target 탐색
+Discover Executable Targets
     ↓
-Target 선택 또는 기존 선택 사용
+Select Target or Use Current Selection
     ↓
 Run
 ```
@@ -282,19 +280,19 @@ Run
 F7
 ```
 
-동작:
+Workflow:
 
 ```text
-현재 파일 저장
+Save Current File
     ↓
 Build
     ↓
 CTest
 ```
 
-테스트 구성 자체는 Vim이 아니라 CMake 프로젝트에서 관리합니다.
+Test configuration is managed by the CMake project rather than Vim.
 
-예:
+Example:
 
 ```cmake
 enable_testing()
@@ -313,24 +311,24 @@ add_test(
 F8
 ```
 
-또는:
+Or:
 
 ```text
 Space bd
 ```
 
-동작:
+Workflow:
 
 ```text
-현재 파일 저장
+Save Current File
     ↓
 Build
     ↓
-Executable Target 확인
+Check Executable Target
     ↓
-Artifact 확인
+Resolve Artifact
     ↓
-GDB 시작
+Start GDB
     ↓
 break main
     ↓
@@ -339,26 +337,26 @@ run
 
 ---
 
-# 전체 워크플로우
+# Complete Workflow
 
 ```text
-현재 파일
+Current File
     │
     ▼
 Project Root Detection
     │
     ▼
-Configure Preset 선택 여부 확인
+Check Selected Configure Preset
     │
-    ├── Configure Preset 선택됨
+    ├── Configure Preset Selected
     │       │
     │       ▼
     │   Preset Configure
     │       │
     │       ▼
-    │   선택된 Build Preset 사용
+    │   Use Selected Build Preset
     │
-    └── Configure Preset 미선택
+    └── No Configure Preset Selected
             │
             ▼
         Fallback CMake
@@ -382,7 +380,7 @@ Configure Preset 선택 여부 확인
              Run    GDB  Valgrind
 ```
 
-일반적인 개발 흐름:
+The typical development flow is:
 
 ```text
 Configure
@@ -402,12 +400,12 @@ Analyze
 
 # Project Root Detection
 
-현재 열려 있는 파일의 위치에서 상위 디렉터리 방향으로 프로젝트 루트를 탐색합니다.
+The project root is discovered by walking upward from the directory containing the currently opened file.
 
-탐색 우선순위:
+Detection priority:
 
 ```text
-현재 파일 위치
+Current File Location
       │
       ▼
 CMakeUserPresets.json
@@ -422,12 +420,12 @@ CMakeLists.txt
 .git
       │
       ▼
-현재 Vim 작업 디렉터리
+Current Vim Working Directory
 ```
 
-이 방식은 모노레포 환경에서도 현재 파일과 가장 가까운 CMake 프로젝트를 우선합니다.
+This allows the workflow to prefer the nearest CMake project even inside a monorepo.
 
-예:
+Example:
 
 ```text
 monorepo/
@@ -442,30 +440,32 @@ monorepo/
     └── CMakeLists.txt
 ```
 
-`engine/src/renderer.cpp`를 편집하는 경우:
+When editing:
 
 ```text
-Project Root
-    ↓
-monorepo/engine
+engine/src/renderer.cpp
 ```
 
-가 선택됩니다.
+the selected project root becomes:
+
+```text
+monorepo/engine
+```
 
 ---
 
 # CMake Presets
 
-다음 Preset 파일을 사용할 수 있습니다.
+The following Preset files are supported:
 
 ```text
 CMakePresets.json
 CMakeUserPresets.json
 ```
 
-Preset의 `include`와 `inherits` 구조도 사용할 수 있습니다.
+Preset structures using `include` and `inherits` are also supported.
 
-예:
+Example:
 
 ```json
 {
@@ -475,7 +475,7 @@ Preset의 `include`와 `inherits` 구조도 사용할 수 있습니다.
 }
 ```
 
-대표적인 구성:
+Typical configurations include:
 
 ```text
 debug
@@ -485,49 +485,49 @@ ubsan
 coverage
 ```
 
-Sanitizer나 Coverage 옵션은 Vim 설정에 하드코딩하지 않고 프로젝트의 CMake 또는 CMake Presets에서 관리합니다.
+Sanitizer and Coverage options are not hardcoded into the Vim configuration.
+
+They are managed by the project's CMake configuration or CMake Presets.
 
 ---
 
-## Configure Preset 선택
+## Selecting a Configure Preset
 
 ```text
 Space bp
 ```
 
-## Build Preset 선택
+## Selecting a Build Preset
 
 ```text
 Space bb
 ```
 
-대표적인 흐름:
+Typical workflow:
 
 ```text
 Space bp
     ↓
-Configure Preset 선택
+Select Configure Preset
     ↓
 Space bb
     ↓
-Build Preset 선택
+Select Build Preset
     ↓
 F5
     ↓
 Build
 ```
 
-예를 들어 `asan` Preset을 선택하면 해당 Preset에 정의된:
+For example, selecting an `asan` Preset allows the workflow to use the configuration defined by that Preset, including:
 
 * `binaryDir`
-* Compiler 설정
+* Compiler configuration
 * Compile Options
 * Linker Options
-* Sanitizer 설정
+* Sanitizer configuration
 
-등을 그대로 사용합니다.
-
-예:
+Example:
 
 ```json
 {
@@ -545,51 +545,45 @@ Build
 
 ---
 
-# Preset 동작 원칙
+# Preset Behavior
 
-`CMakePresets.json`이 프로젝트에 존재한다고 해서 자동으로 Preset 방식으로 전환하지 않습니다.
+The presence of `CMakePresets.json` does not automatically switch the workflow to Preset mode.
 
-**현재 Vim 세션에서 Configure Preset을 직접 선택한 경우에만 Preset을 사용합니다.**
+> **A Preset is used only when a Configure Preset has been explicitly selected in the current Vim session.**
 
 ```text
-Configure Preset 선택됨
+Configure Preset Selected
     ↓
-Preset 기반 Configure / Build
+Preset-Based Configure / Build
 ```
 
-반대로 Preset 파일이 존재하더라도 Configure Preset을 선택하지 않았다면:
+If a Preset file exists but no Configure Preset has been selected:
 
 ```text
-Configure Preset 미선택
+No Configure Preset Selected
     ↓
 Fallback CMake
 ```
 
-즉, Preset의 존재 여부와 현재 선택 상태를 구분합니다.
-
-이를 통해 동일한 프로젝트에서도 필요에 따라:
+In other words:
 
 ```text
-Preset Build
+Preset Exists
+    ≠
+Preset Is Active
 ```
 
-와:
-
-```text
-Fallback Build
-```
-
-를 선택할 수 있습니다.
+This makes it possible to use either a Preset-based build or the default Fallback build for the same project.
 
 ---
 
 # Fallback CMake
 
-모든 프로젝트가 CMake Presets를 사용할 필요는 없습니다.
+Not every CMake project needs to use CMake Presets.
 
-Configure Preset이 선택되지 않은 경우 기본적인 CMake Configure를 사용합니다.
+When no Configure Preset is selected, the workflow uses a default CMake Configure process.
 
-개념적으로 다음과 같은 명령을 수행합니다.
+Conceptually, it performs:
 
 ```bash
 cmake -S <source-dir> \
@@ -598,9 +592,9 @@ cmake -S <source-dir> \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ```
 
-Ninja가 설치되어 있다면 가능한 경우 Ninja Generator를 사용할 수 있습니다.
+If Ninja is available, the workflow may use the Ninja generator when appropriate.
 
-지원하는 Fallback Build Type:
+Supported Fallback Build Types:
 
 ```text
 debug
@@ -609,7 +603,7 @@ relwithdebinfo
 minsizerel
 ```
 
-따라서 다음과 같은 단순한 프로젝트도 별도의 Preset 없이 사용할 수 있습니다.
+Therefore, even a simple project without Presets can be used directly.
 
 ```text
 project/
@@ -632,15 +626,15 @@ Build
 
 # Build Directory
 
-Fallback 방식에서는 프로젝트 내부에 임의의 Build Directory를 생성하지 않습니다.
+Fallback builds do not create arbitrary Build Directories inside the project.
 
-기본 위치:
+The default location is:
 
 ```text
 ~/.cache/vim-cmake/
 ```
 
-개념적인 구조:
+Conceptual layout:
 
 ```text
 ~/.cache/vim-cmake/
@@ -651,31 +645,31 @@ Fallback 방식에서는 프로젝트 내부에 임의의 Build Directory를 생
     └── minsizerel/
 ```
 
-프로젝트마다 Hash 기반 디렉터리를 사용하므로 서로 다른 프로젝트의 Build 결과가 충돌하지 않습니다.
+Each project uses a hash-based directory, preventing build artifacts from different projects from colliding.
 
 ---
 
-# CMake File API와 Target 탐색
+# CMake File API and Target Discovery
 
-실행 파일 이름을 추측하거나 Build Directory를 단순 검색하지 않습니다.
+The workflow does not guess executable names or simply search the Build Directory for binaries.
 
-CMake File API를 사용하여 실제 CMake Target과 Artifact 정보를 확인합니다.
+Instead, it uses the CMake File API to discover actual CMake Targets and Artifacts.
 
-동작 흐름:
+Workflow:
 
 ```text
-Query 생성
+Create Query
     ↓
 CMake Configure
     ↓
 codemodel-v2 Reply
     ↓
-Target JSON 분석
+Parse Target JSON
     ↓
-Artifact 확인
+Resolve Artifacts
 ```
 
-대표적인 Target 종류:
+Typical Target types include:
 
 ```text
 EXECUTABLE
@@ -684,9 +678,9 @@ SHARED_LIBRARY
 UTILITY
 ```
 
-실행 가능한 대상은 실제 `EXECUTABLE` Target입니다.
+Only actual `EXECUTABLE` Targets are considered runnable.
 
-예:
+Example:
 
 ```text
 my_app
@@ -699,29 +693,29 @@ my_library
 └── STATIC_LIBRARY
 ```
 
-따라서 Run, GDB, Valgrind는 실제 실행 가능한 CMake Target을 기준으로 동작합니다.
+Run, GDB, and Valgrind therefore operate on actual executable CMake Targets rather than guessed executable paths.
 
 ---
 
-# Executable Target 관리
+# Executable Target Management
 
-실행 가능한 Target이 하나라면 해당 Target을 바로 사용할 수 있습니다.
+If the project contains only one executable Target, it can be used directly.
 
-여러 개라면 실행 Target을 선택할 수 있습니다.
+If multiple executable Targets exist, one can be selected.
 
-## 실행 Target 선택
+## Select Executable Target
 
 ```text
 Space bt
 ```
 
-## 전체 CMake Target 확인
+## Show All CMake Targets
 
 ```text
 Space ba
 ```
 
-예:
+Example:
 
 ```text
 1. app
@@ -730,13 +724,13 @@ Space ba
 4. unit_tests
 ```
 
-선택된 실행 Target은 다음 작업에 사용됩니다.
+The selected executable Target is used by:
 
 * Run
 * GDB
 * Valgrind
 
-다중 Target 프로젝트에서는 먼저 실행 대상을 명확하게 선택하는 것을 권장합니다.
+For projects with multiple executable Targets, selecting the desired Target first is recommended.
 
 ```text
 Space bt
@@ -744,9 +738,9 @@ Space bt
 
 ---
 
-# clangd와 compile_commands.json
+# clangd and compile_commands.json
 
-C/C++ LSP 환경은 다음 구조를 사용합니다.
+The C/C++ LSP environment uses the following structure:
 
 ```text
 coc.nvim
@@ -756,15 +750,15 @@ coc-clangd
 clangd
 ```
 
-clangd가 정확한 진단과 코드 탐색 정보를 제공하려면 컴파일 데이터가 필요합니다.
+clangd requires compilation information to provide accurate diagnostics and code navigation.
 
-CMake 프로젝트에서는 일반적으로 다음 파일을 사용합니다.
+For CMake projects, this information is generally provided through:
 
 ```text
 compile_commands.json
 ```
 
-예:
+Example:
 
 ```text
 project/
@@ -776,47 +770,47 @@ project/
 └── CMakeLists.txt
 ```
 
-이 환경은 clangd 프로세스에 `--compile-commands-dir`를 직접 전달하거나 CoC/clangd를 재시작하는 방식이 아니라, 활성 Build Directory의 컴파일 데이터를 기준으로 프로젝트 루트에 심볼릭 링크를 생성하는 방식을 사용합니다.
+Rather than directly passing `--compile-commands-dir` to clangd or restarting CoC/clangd whenever the active Build Directory changes, this workflow creates a symbolic link in the project root that points to the compilation database of the active Build Directory.
 
-동작 흐름:
+Workflow:
 
 ```text
-현재 세션 build_dir 확인
+Check Current Session build_dir
         ↓
-없으면 프로젝트 루트의 compile_commands.json 확인
+If unavailable, check the Project Root
         ↓
-없으면 기존 Fallback Build Directory 확인
+If unavailable, check an existing Fallback Build Directory
         ↓
-없으면 선택된 Configure Preset의 binaryDir 확인
+If unavailable, check the selected Configure Preset's binaryDir
         ↓
-없으면 Configure만 실행
+If unavailable, perform Configure only
         ↓
-현재 build_dir의 compile_commands.json 확인
+Check compile_commands.json in the active build_dir
         ↓
-프로젝트 루트에 compile_commands.json 심볼릭 링크 생성
+Create a compile_commands.json symbolic link in the Project Root
 ```
 
-핵심은 다음과 같습니다.
+The key principle is:
 
-> **현재 활성 Build Directory의 `compile_commands.json`이 실제 컴파일 설정의 Source of Truth입니다.**
+> **The `compile_commands.json` generated by the currently active Build Directory is the Source of Truth for compilation information.**
 
 ---
 
-## compile_commands.json 링크
+## Link compile_commands.json
 
 ```text
 Space cl
 ```
 
-또는:
+Or:
 
 ```vim
 :CMakeLinkCompileCommands
 ```
 
-이 기능은 `compile_commands.json`을 프로젝트 루트에서 찾을 수 있도록 연결하는 역할을 합니다.
+This feature makes `compile_commands.json` available from the Project Root.
 
-CoC 확장이나 `coc-settings.json` 설정까지 자동으로 구성하는 기능은 아닙니다.
+It does not automatically install or configure CoC extensions or modify `coc-settings.json`.
 
 ---
 
@@ -828,125 +822,129 @@ CoC 확장이나 `coc-settings.json` 설정까지 자동으로 구성하는 기�
 F7
 ```
 
-동작:
+Workflow:
 
 ```text
-현재 파일 저장
+Save Current File
     ↓
 Build
     ↓
 CTest
 ```
 
-## CTest 직접 실행
+## Run CTest Directly
 
 ```text
 Space tb
 ```
 
-현재 활성 Build Directory에서 CTest를 실행합니다.
+CTest runs in the currently active Build Directory.
 
 ---
 
-## 현재 파일 관련 테스트
+## Run Tests Related to the Current File
 
 ```text
 Space tc
 ```
 
-현재 파일 이름을 기준으로 CTest 테스트 이름을 필터링합니다.
+The test name is filtered based on the current file name.
 
-예:
+Example:
 
 ```text
-현재 파일: example_test.cpp
+Current File: example_test.cpp
     ↓
-파일명: example_test
+File Name: example_test
     ↓
-끝의 _test 제거
+Remove trailing _test
     ↓
 example
     ↓
 ctest -R example
 ```
 
-파일명이 `_test`로 끝나지 않는 경우 확장자를 제외한 파일 이름을 그대로 사용합니다.
+If the file name does not end with `_test`, the file name without its extension is used directly.
 
-이 기능은 현재 소스 코드나 CMake Target을 분석하여 테스트를 찾는 방식이 아니라 파일 이름 기반 패턴을 `ctest -R`에 전달합니다.
+This feature does not analyze source code or CMake Targets to discover tests.
+
+Instead, it passes a file-name-based pattern to:
+
+```text
+ctest -R
+```
 
 ---
 
 # GDB
 
-## GDB 시작
+## Start GDB
 
 ```text
 F8
 ```
 
-또는:
+Or:
 
 ```text
 Space bd
 ```
 
-개념적으로 다음과 같이 실행합니다.
+Conceptually, GDB is started as:
 
 ```bash
 gdb -q <executable>
 ```
 
-시작 후:
+The workflow then performs:
 
 ```text
 break main
 run
 ```
 
-을 수행합니다.
+---
+
+## GDB Execution Control
+
+| Key | GDB Command | Action                                                 |
+| --- | ----------- | ------------------------------------------------------ |
+| F10 | `next`      | Execute the next line without stepping into a function |
+| F11 | `step`      | Step into a function                                   |
+| F12 | `continue`  | Continue execution until the next breakpoint           |
+
+These shortcuts send commands to an already running GDB session.
+
+Therefore, GDB must be started first.
 
 ---
 
-## GDB 실행 제어
-
-| 키   | GDB 명령     | 기능                    |
-| --- | ---------- | --------------------- |
-| F10 | `next`     | 현재 함수를 넘어 다음 줄 실행     |
-| F11 | `step`     | 함수 내부로 진입하며 한 단계 실행   |
-| F12 | `continue` | 다음 Breakpoint까지 계속 실행 |
-
-위 단축키는 이미 실행 중인 GDB 세션에 명령을 전송합니다.
-
-따라서 먼저 GDB를 시작해야 합니다.
-
----
-
-## 현재 줄 Breakpoint
+## Breakpoint at the Current Line
 
 ```text
 Space bk
 ```
 
-현재 커서 위치를 기준으로 GDB에 Breakpoint를 추가합니다.
+A breakpoint is added based on the current cursor location.
 
-개념적으로:
+Conceptually:
 
 ```text
 break /absolute/path/to/source.cpp:<current-line>
 ```
 
-`Space bk`는 새로운 GDB 세션을 시작하지 않습니다.
+`Space bk` does not start a new GDB session.
 
-권장 흐름:
+Recommended workflow:
 
 ```text
-F8 또는 Space bd
+F8 or Space bd
         ↓
-GDB 시작
+Start GDB
         ↓
 Space bk
         ↓
-Breakpoint 추가
+Add Breakpoint
         ↓
 F10 / F11 / F12
 ```
@@ -955,13 +953,13 @@ F10 / F11 / F12
 
 # Valgrind
 
-선택된 실행 Target을 대상으로 Valgrind를 실행합니다.
+Valgrind runs against the selected executable Target.
 
 ```text
 Space bv
 ```
 
-대표적인 옵션:
+Typical options:
 
 ```text
 --leak-check=full
@@ -973,20 +971,20 @@ Space bv
 
 # ASan / UBSan / Coverage
 
-Sanitizer나 Coverage 옵션은 Vim 설정에 직접 추가하지 않습니다.
+Sanitizer and Coverage options are not added directly to the Vim configuration.
 
-프로젝트의 CMake 또는 CMake Presets에서 관리합니다.
+They are managed through the project's CMake configuration or CMake Presets.
 
-예:
+Example:
 
 ```text
 Space bp
     ↓
-asan 선택
+Select asan
     ↓
 Space bb
     ↓
-asan Build Preset 선택
+Select ASan Build Preset
     ↓
 F5
     ↓
@@ -997,19 +995,21 @@ F6
 Run
 ```
 
-ASan, UBSan, Coverage는 Universal CMake 위에서 동작하는 별도의 Vim 기능이 아니라 **CMake Build Configuration의 일부**입니다.
+ASan, UBSan, and Coverage are not separate Vim features.
+
+They are treated as **CMake Build Configurations** that run through the same Universal CMake Workflow.
 
 ---
 
-# Vim 개발 기능
+# Vim Development Features
 
-## Source / Header 전환
+## Source / Header Switching
 
 ```text
 F4
 ```
 
-예:
+Example:
 
 ```text
 src/example.cpp
@@ -1017,7 +1017,7 @@ src/example.cpp
 include/example.hpp
 ```
 
-대표적인 탐색 경로:
+Typical search paths:
 
 ```text
 src/
@@ -1029,91 +1029,91 @@ tests/
 
 ---
 
-## 파일 탐색
+## File Navigation
 
-| 키          | 기능               |
-| ---------- | ---------------- |
-| Ctrl + n   | NERDTree 토글      |
-| Ctrl + p   | FZF 파일 검색        |
-| Space + rg | ripgrep 기반 코드 검색 |
+| Key        | Action                    |
+| ---------- | ------------------------- |
+| Ctrl + n   | Toggle NERDTree           |
+| Ctrl + p   | Search files with FZF     |
+| Space + rg | Search code using ripgrep |
 
 ---
 
 ## clangd / CoC
 
-| 키          | 기능            |
-| ---------- | ------------- |
-| `gd`       | 정의로 이동        |
-| `gy`       | 타입 정의         |
-| `gi`       | 구현으로 이동       |
-| `gr`       | 참조 찾기         |
-| `K`        | Hover         |
-| `Space rn` | 심볼 이름 변경      |
-| `Space cf` | 코드 포맷         |
-| `F1`       | Inlay Hint 토글 |
+| Key        | Action                |
+| ---------- | --------------------- |
+| `gd`       | Go to definition      |
+| `gy`       | Go to type definition |
+| `gi`       | Go to implementation  |
+| `gr`       | Find references       |
+| `K`        | Hover documentation   |
+| `Space rn` | Rename symbol         |
+| `Space cf` | Format code           |
+| `F1`       | Toggle Inlay Hints    |
 
 ---
 
-# 전체 단축키
+# Keybindings
 
 ## Build / Run / Test / Debug
 
-| 키   | 기능                 |
-| --- | ------------------ |
-| F5  | 저장 후 Build         |
-| F6  | 저장 후 Build + Run   |
-| F7  | 저장 후 Build + CTest |
-| F8  | 저장 후 Build + GDB   |
-| F10 | GDB `next`         |
-| F11 | GDB `step`         |
-| F12 | GDB `continue`     |
+| Key | Action                     |
+| --- | -------------------------- |
+| F5  | Save and Build             |
+| F6  | Save, Build, and Run       |
+| F7  | Save, Build, and Run CTest |
+| F8  | Save, Build, and Start GDB |
+| F10 | GDB `next`                 |
+| F11 | GDB `step`                 |
+| F12 | GDB `continue`             |
 
 ## CMake
 
-| 키        | 기능                  |
-| -------- | ------------------- |
-| Space bc | Configure           |
-| Space bp | Configure Preset 선택 |
-| Space bb | Build Preset 선택     |
-| Space bt | 실행 Target 선택        |
-| Space br | Build + Run         |
-| Space ba | 전체 Target 보기        |
+| Key      | Action                   |
+| -------- | ------------------------ |
+| Space bc | Configure                |
+| Space bp | Select Configure Preset  |
+| Space bb | Select Build Preset      |
+| Space bt | Select Executable Target |
+| Space br | Build + Run              |
+| Space ba | Show All Targets         |
 
-## 기타
+## Other
 
-| 키        | 기능                         |
-| -------- | -------------------------- |
-| Space tb | CTest                      |
-| Space tc | 현재 파일 관련 테스트               |
-| Space bv | Valgrind                   |
-| Space bd | GDB 시작                     |
-| Space bk | 현재 줄 Breakpoint            |
-| Space cs | CMake 상태                   |
-| Space cr | 프로젝트 상태 초기화                |
-| Space cl | `compile_commands.json` 링크 |
-
----
-
-# 핵심 설계 원칙
-
-1. **CMake를 프로젝트 설정의 Source of Truth로 사용한다.**
-2. **Vim은 컴파일러 옵션과 빌드 설정을 직접 중복 관리하지 않는다.**
-3. **Configure Preset을 선택한 경우에만 Preset 기반 workflow를 사용한다.**
-4. **Preset 파일이 존재해도 선택하지 않았다면 Fallback CMake를 사용한다.**
-5. **Preset이 없어도 Fallback CMake로 동작한다.**
-6. **프로젝트 루트는 현재 파일 위치를 기준으로 탐색한다.**
-7. **실행 파일 이름을 추측하지 않고 CMake File API를 사용한다.**
-8. **clangd는 현재 활성 Build Directory의 컴파일 정보를 기준으로 동작한다.**
-9. **ASan, UBSan, Coverage는 CMake Build Configuration에서 관리한다.**
-10. **GDB와 Valgrind는 실제 `EXECUTABLE` Target을 대상으로 동작한다.**
+| Key      | Action                            |
+| -------- | --------------------------------- |
+| Space tb | Run CTest                         |
+| Space tc | Run Tests Related to Current File |
+| Space bv | Run Valgrind                      |
+| Space bd | Start GDB                         |
+| Space bk | Add Breakpoint at Current Line    |
+| Space cs | Show CMake Status                 |
+| Space cr | Reset Project State               |
+| Space cl | Link `compile_commands.json`      |
 
 ---
 
-# 목표
+# Design Principles
 
-이 설정의 목적은 특정 프로젝트에 종속된 Vim 설정을 만드는 것이 아닙니다.
+1. **CMake is the Source of Truth for project configuration.**
+2. **Vim does not duplicate compiler options or build configuration.**
+3. **Preset-based workflows are used only when a Configure Preset has been explicitly selected.**
+4. **If a Preset file exists but no Preset is selected, Fallback CMake is used.**
+5. **Projects without Presets are supported through Fallback CMake.**
+6. **The project root is discovered relative to the currently opened file.**
+7. **Executable paths are not guessed; the CMake File API is used to discover Targets and Artifacts.**
+8. **clangd uses compilation information from the currently active Build Directory.**
+9. **ASan, UBSan, and Coverage are managed as CMake Build Configurations.**
+10. **GDB and Valgrind operate on actual `EXECUTABLE` Targets.**
 
-다음과 같은 다양한 C/C++ 프로젝트:
+---
+
+# Goal
+
+The goal of this project is not to create a Vim configuration tied to a specific project.
+
+Instead, it aims to provide a **Universal CMake Workflow** that allows a wide range of C and C++ projects:
 
 ```text
 CMake
@@ -1126,7 +1126,7 @@ Coverage
 Monorepo
 ```
 
-를 하나의 Vim 인터페이스에서:
+to be managed through a single Vim interface:
 
 ```text
 Configure
@@ -1136,5 +1136,3 @@ Test
 Debug
 Analyze
 ```
-
-할 수 있는 **Universal CMake Workflow**를 제공하는 것이 목표입니다.
