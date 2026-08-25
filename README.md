@@ -1,38 +1,89 @@
 # vim-universal-cmake
 
-> A universal CMake workflow for modern C/C++ development in Vim.
+> A unified CMake workflow for modern C and C++ development in Vim.
 
-This repository provides a **modern Vim-based C/C++20/23 development environment built around CMake**.
+**CMake remains the Source of Truth. Vim becomes the interface.**
 
-Its goal is to integrate the following tools into a single workflow:
+Build, run, test, debug, and analyze CMake projects without hardcoding compiler commands, manually managing executable paths, or maintaining project-specific build logic in your Vim configuration.
 
-> **Vim + CMake + C++20/23 + clangd + CoC + CTest + GDB + Valgrind + Sanitizers**
-
-The core idea is simple:
-
-> **Vim does not manage the build system. CMake remains the Source of Truth for project configuration, while Vim provides a unified interface for configuring, building, running, testing, debugging, and analyzing projects.**
-
-Therefore, Vim does not directly assemble compiler commands such as:
-
-```bash
-g++ main.cpp -std=c++23 ...
+```text
+F5   Build
+F6   Build + Run
+F7   Build + CTest
+F8   Build + GDB
 ```
 
-Instead, it uses the project's existing CMake configuration.
+Powered by:
+
+```text
+CMake
+CMake Presets
+CMake File API
+clangd
+CoC
+CTest
+GDB
+Valgrind
+ASan / UBSan
+Coverage
+```
+
+![vim-universal-cmake demo](assets/demo.gif)
+
+---
+
+# Why?
+
+A CMake project already knows how it should be built.
 
 ```text
 CMake
  ├── Compiler
- ├── C++ Standard
+ ├── C / C++ Standard
  ├── Include Paths
  ├── Compile Options
  ├── Link Options
  ├── Sanitizers
  ├── Targets
+ ├── Artifacts
  └── Tests
 ```
 
-This environment is designed to provide a consistent Vim interface for a wide range of CMake-based C and C++ projects.
+However, a typical Vim workflow often duplicates this information:
+
+```vim
+g++ main.cpp -std=c++23 -Iinclude -Wall ...
+```
+
+or relies on project-specific mappings:
+
+```vim
+nnoremap <F5> :!g++ main.cpp -o app<CR>
+nnoremap <F6> :!./app<CR>
+```
+
+This approach does not scale well.
+
+Different projects may have:
+
+* Different compilers
+* Different C++ standards
+* Different include paths
+* Different build directories
+* Multiple executable targets
+* Debug / Release configurations
+* CMake Presets
+* Sanitizer configurations
+* Tests
+* Different executable output locations
+
+The build configuration already exists in CMake.
+
+> **Stop writing project-specific build commands in your Vim configuration.**
+
+> **Let CMake describe the project. Let Vim drive the workflow.**
+
+`vim-universal-cmake` provides a consistent Vim interface while allowing CMake to remain responsible for project configuration.
 
 ---
 
@@ -52,7 +103,7 @@ F6
 Run
 ```
 
-For a project that uses CMake Presets:
+For a project using CMake Presets:
 
 ```text
 Space bp
@@ -66,13 +117,9 @@ Select Build Preset
 F5
       ↓
 Build
-      ↓
-F6
-      ↓
-Run
 ```
 
-For projects with multiple executable Targets:
+For projects with multiple executable targets:
 
 ```text
 Space bt
@@ -86,81 +133,129 @@ Build + Run
 
 ---
 
-# Architecture
+# What You Get
+
+## Build
 
 ```text
-                    ┌───────────────────┐
-                    │       Vim         │
-                    └─────────┬─────────┘
-                              │
-                              ▼
-                    ┌───────────────────┐
-                    │ Universal CMake   │
-                    │    Workflow       │
-                    └─────────┬─────────┘
-                              │
-              ┌───────────────┼────────────────┐
-              ▼               ▼                ▼
-         Configure          Build         CMake File API
-              │               │                │
-              │               │         ┌──────┴──────┐
-              │               │         ▼             ▼
-              │               │    Executable       clangd
-              │               │         │
-              ▼               ▼         │
-          CMake Preset      CTest        │
-          or Fallback                     │
-                                         ▼
-                                ┌────────┼────────┐
-                                ▼        ▼        ▼
-                               Run      GDB    Valgrind
+F5
 ```
 
-Vim does not separately duplicate or manage the project's:
-
-* Compiler
-* C++ Standard
-* Include Paths
-* Compile Options
-* Link Options
-* Sanitizers
-* Targets
-* Tests
-
-When the project's CMake configuration changes, the Vim workflow uses the updated configuration accordingly.
+```text
+Save
+  ↓
+Detect Project
+  ↓
+Configure if Necessary
+  ↓
+Build
+```
 
 ---
 
-# Features
+## Run
 
-| Component               | Role                                         |
-| ----------------------- | -------------------------------------------- |
-| C++20 / C++23           | Modern C++ development                       |
-| CMake                   | Build system and project configuration       |
-| CMake Presets           | Configure and Build configuration selection  |
-| Fallback CMake          | Support for projects without Presets         |
-| CMake File API          | Discovery of actual Targets and Artifacts    |
-| clangd + CoC            | Completion, diagnostics, and code navigation |
-| `compile_commands.json` | Compilation database for clangd              |
-| CTest                   | Project testing                              |
-| GDB                     | Terminal-based debugging                     |
-| Valgrind                | Memory error and leak detection              |
-| ASan / UBSan            | Runtime checking with sanitizers             |
-| Coverage                | Code coverage configuration                  |
-| FZF                     | File searching                               |
-| NERDTree                | File exploration                             |
-| ripgrep                 | Code searching                               |
+```text
+F6
+```
 
-Supported project types include:
+```text
+Save
+  ↓
+Build
+  ↓
+Discover Executable Targets
+  ↓
+Resolve Executable Artifact
+  ↓
+Run
+```
 
-* Simple CMake projects with a single executable
-* Projects with multiple executable Targets
-* Projects using `CMakePresets.json`
-* Projects using `CMakeUserPresets.json`
-* Debug / Release configurations
-* ASan / UBSan / Coverage configurations
-* CTest-based test projects
-* Independent CMake projects inside a monorepo
+---
+
+## Test
+
+```text
+F7
+```
+
+```text
+Save
+  ↓
+Build
+  ↓
+CTest
+```
+
+---
+
+## Debug
+
+```text
+F8
+```
+
+```text
+Save
+  ↓
+Build
+  ↓
+Resolve Executable
+  ↓
+Start GDB
+```
+
+---
+
+# Why vim-universal-cmake?
+
+| Typical Vim Build Workflow                | vim-universal-cmake                          |
+| ----------------------------------------- | -------------------------------------------- |
+| Hardcode compiler commands                | Uses the existing CMake project              |
+| Duplicate include paths and flags         | CMake remains the Source of Truth            |
+| Assume a build directory                  | Tracks the active build configuration        |
+| Guess executable paths                    | Uses CMake File API artifacts                |
+| Assume one executable                     | Supports multiple executable targets         |
+| Manually switch build configurations      | Supports Presets and fallback configurations |
+| Manually locate `compile_commands.json`   | Links the active compilation database        |
+| Separate workflows for tests and analysis | Unified CMake-based workflow                 |
+
+The central idea is:
+
+```text
+CMake describes the project.
+
+Vim drives the workflow.
+```
+
+---
+
+# Works With
+
+`vim-universal-cmake` is designed to work with existing CMake projects.
+
+Supported workflows include:
+
+```text
+✓ Simple single-executable projects
+✓ Multiple executable targets
+✓ CMakePresets.json
+✓ CMakeUserPresets.json
+✓ Preset inheritance
+✓ Debug
+✓ Release
+✓ RelWithDebInfo
+✓ MinSizeRel
+✓ ASan
+✓ UBSan
+✓ Coverage
+✓ CTest
+✓ Monorepos
+✓ GCC
+✓ Clang
+```
+
+The workflow does not require a project-specific Vim configuration.
 
 ---
 
@@ -210,130 +305,60 @@ Main components:
 
 The following tools are generally required:
 
-* GCC / Clang
-* CMake
-* Ninja
-* GDB
-* Valgrind
-* Node.js
-* ripgrep
-
----
-
-# Basic Usage
-
-## Build
-
 ```text
-F5
-```
-
-Workflow:
-
-```text
-Save Current File
-    ↓
-Project Root Detection
-    ↓
-Configure
-    ↓
-CMake Build
-```
-
-`F5` builds the project using the active Build Configuration.
-
-Configuration is performed first when necessary.
-
----
-
-## Build + Run
-
-```text
-F6
-```
-
-Or:
-
-```text
-Space br
-```
-
-Workflow:
-
-```text
-Save Current File
-    ↓
-Build
-    ↓
-Discover Executable Targets
-    ↓
-Select Target or Use Current Selection
-    ↓
-Run
+GCC / Clang
+CMake
+Ninja
+GDB
+Valgrind
+Node.js
+ripgrep
 ```
 
 ---
 
-## Build + CTest
+# Core Architecture
 
 ```text
-F7
+                    ┌───────────────────┐
+                    │       Vim         │
+                    └─────────┬─────────┘
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │ Universal CMake   │
+                    │    Workflow       │
+                    └─────────┬─────────┘
+                              │
+              ┌───────────────┼────────────────┐
+              ▼               ▼                ▼
+         Configure          Build         CMake File API
+              │               │                │
+              │               │         ┌──────┴──────┐
+              │               │         ▼             ▼
+              │               │    Executable       clangd
+              │               │         │
+              ▼               ▼         │
+          CMake Preset      CTest        │
+          or Fallback                     │
+                                         ▼
+                                ┌────────┼────────┐
+                                ▼        ▼        ▼
+                               Run      GDB    Valgrind
 ```
 
-Workflow:
+Vim does not separately manage the project's:
 
-```text
-Save Current File
-    ↓
-Build
-    ↓
-CTest
-```
+* Compiler
+* C / C++ Standard
+* Include Paths
+* Compile Options
+* Link Options
+* Sanitizers
+* Targets
+* Tests
 
-Test configuration is managed by the CMake project rather than Vim.
-
-Example:
-
-```cmake
-enable_testing()
-
-add_test(
-    NAME example_test
-    COMMAND example_test
-)
-```
-
----
-
-## Build + GDB
-
-```text
-F8
-```
-
-Or:
-
-```text
-Space bd
-```
-
-Workflow:
-
-```text
-Save Current File
-    ↓
-Build
-    ↓
-Check Executable Target
-    ↓
-Resolve Artifact
-    ↓
-Start GDB
-    ↓
-break main
-    ↓
-run
-```
+When the CMake configuration changes, the workflow follows the updated configuration.
 
 ---
 
@@ -456,7 +481,7 @@ monorepo/engine
 
 # CMake Presets
 
-The following Preset files are supported:
+The following preset files are supported:
 
 ```text
 CMakePresets.json
@@ -485,19 +510,19 @@ ubsan
 coverage
 ```
 
-Sanitizer and Coverage options are not hardcoded into the Vim configuration.
+Sanitizer and coverage options are not hardcoded into the Vim configuration.
 
 They are managed by the project's CMake configuration or CMake Presets.
 
 ---
 
-## Selecting a Configure Preset
+## Select a Configure Preset
 
 ```text
 Space bp
 ```
 
-## Selecting a Build Preset
+## Select a Build Preset
 
 ```text
 Space bb
@@ -519,12 +544,12 @@ F5
 Build
 ```
 
-For example, selecting an `asan` Preset allows the workflow to use the configuration defined by that Preset, including:
+For example, selecting an `asan` preset allows the workflow to use the configuration defined by that preset, including:
 
 * `binaryDir`
 * Compiler configuration
-* Compile Options
-* Linker Options
+* Compile options
+* Linker options
 * Sanitizer configuration
 
 Example:
@@ -573,17 +598,17 @@ Preset Exists
 Preset Is Active
 ```
 
-This makes it possible to use either a Preset-based build or the default Fallback build for the same project.
+This makes it possible to use either a Preset-based build or the default fallback build for the same project.
 
 ---
 
 # Fallback CMake
 
-Not every CMake project needs to use CMake Presets.
+Not every CMake project needs CMake Presets.
 
-When no Configure Preset is selected, the workflow uses a default CMake Configure process.
+When no Configure Preset is selected, the workflow uses a default CMake configure process.
 
-Conceptually, it performs:
+Conceptually:
 
 ```bash
 cmake -S <source-dir> \
@@ -594,7 +619,7 @@ cmake -S <source-dir> \
 
 If Ninja is available, the workflow may use the Ninja generator when appropriate.
 
-Supported Fallback Build Types:
+Supported fallback build types:
 
 ```text
 debug
@@ -626,7 +651,7 @@ Build
 
 # Build Directory
 
-Fallback builds do not create arbitrary Build Directories inside the project.
+Fallback builds do not create arbitrary build directories inside the project.
 
 The default location is:
 
@@ -651,9 +676,29 @@ Each project uses a hash-based directory, preventing build artifacts from differ
 
 # CMake File API and Target Discovery
 
-The workflow does not guess executable names or simply search the Build Directory for binaries.
+One of the core principles of this project is:
 
-Instead, it uses the CMake File API to discover actual CMake Targets and Artifacts.
+> **Executable paths are not guessed.**
+
+A CMake project may contain:
+
+```text
+app
+server
+client
+unit_tests
+benchmark
+```
+
+Their output paths may differ depending on:
+
+* Generator
+* Build directory
+* Build configuration
+* CMake Preset
+* Runtime output configuration
+
+Instead of searching the build directory or assuming an executable name, `vim-universal-cmake` uses the **CMake File API**.
 
 Workflow:
 
@@ -669,7 +714,7 @@ Parse Target JSON
 Resolve Artifacts
 ```
 
-Typical Target types include:
+Typical target types include:
 
 ```text
 EXECUTABLE
@@ -678,7 +723,7 @@ SHARED_LIBRARY
 UTILITY
 ```
 
-Only actual `EXECUTABLE` Targets are considered runnable.
+Only actual `EXECUTABLE` targets are considered runnable.
 
 Example:
 
@@ -693,15 +738,15 @@ my_library
 └── STATIC_LIBRARY
 ```
 
-Run, GDB, and Valgrind therefore operate on actual executable CMake Targets rather than guessed executable paths.
+Run, GDB, and Valgrind therefore operate on actual executable CMake targets rather than guessed executable paths.
 
 ---
 
 # Executable Target Management
 
-If the project contains only one executable Target, it can be used directly.
+If the project contains only one executable target, it can be used directly.
 
-If multiple executable Targets exist, one can be selected.
+If multiple executable targets exist, one can be selected.
 
 ## Select Executable Target
 
@@ -724,13 +769,15 @@ Example:
 4. unit_tests
 ```
 
-The selected executable Target is used by:
+The selected executable target is used by:
 
-* Run
-* GDB
-* Valgrind
+```text
+Run
+GDB
+Valgrind
+```
 
-For projects with multiple executable Targets, selecting the desired Target first is recommended.
+For projects with multiple executable targets, selecting the desired target first is recommended.
 
 ```text
 Space bt
@@ -740,7 +787,7 @@ Space bt
 
 # clangd and compile_commands.json
 
-The C/C++ LSP environment uses the following structure:
+The C / C++ LSP environment uses:
 
 ```text
 coc.nvim
@@ -750,7 +797,7 @@ coc-clangd
 clangd
 ```
 
-clangd requires compilation information to provide accurate diagnostics and code navigation.
+clangd requires accurate compilation information.
 
 For CMake projects, this information is generally provided through:
 
@@ -770,7 +817,7 @@ project/
 └── CMakeLists.txt
 ```
 
-Rather than directly passing `--compile-commands-dir` to clangd or restarting CoC/clangd whenever the active Build Directory changes, this workflow creates a symbolic link in the project root that points to the compilation database of the active Build Directory.
+Rather than directly passing `--compile-commands-dir` to clangd or restarting CoC whenever the active build directory changes, this workflow creates a symbolic link in the project root that points to the compilation database of the active build directory.
 
 Workflow:
 
@@ -808,7 +855,7 @@ Or:
 :CMakeLinkCompileCommands
 ```
 
-This feature makes `compile_commands.json` available from the Project Root.
+This makes `compile_commands.json` available from the project root.
 
 It does not automatically install or configure CoC extensions or modify `coc-settings.json`.
 
@@ -832,13 +879,28 @@ Build
 CTest
 ```
 
+CTest configuration remains part of the CMake project.
+
+Example:
+
+```cmake
+enable_testing()
+
+add_test(
+    NAME example_test
+    COMMAND example_test
+)
+```
+
+---
+
 ## Run CTest Directly
 
 ```text
 Space tb
 ```
 
-CTest runs in the currently active Build Directory.
+CTest runs in the currently active build directory.
 
 ---
 
@@ -866,7 +928,7 @@ ctest -R example
 
 If the file name does not end with `_test`, the file name without its extension is used directly.
 
-This feature does not analyze source code or CMake Targets to discover tests.
+This feature does not analyze source code or CMake targets to discover tests.
 
 Instead, it passes a file-name-based pattern to:
 
@@ -953,7 +1015,7 @@ F10 / F11 / F12
 
 # Valgrind
 
-Valgrind runs against the selected executable Target.
+Valgrind runs against the selected executable target.
 
 ```text
 Space bv
@@ -967,11 +1029,13 @@ Typical options:
 --track-origins=yes
 ```
 
+Because the executable is resolved through the active CMake configuration, Valgrind does not depend on a hardcoded executable path.
+
 ---
 
 # ASan / UBSan / Coverage
 
-Sanitizer and Coverage options are not added directly to the Vim configuration.
+Sanitizer and coverage options are not added directly to the Vim configuration.
 
 They are managed through the project's CMake configuration or CMake Presets.
 
@@ -997,7 +1061,7 @@ Run
 
 ASan, UBSan, and Coverage are not separate Vim features.
 
-They are treated as **CMake Build Configurations** that run through the same Universal CMake Workflow.
+They are treated as **CMake Build Configurations** and run through the same workflow.
 
 ---
 
@@ -1039,7 +1103,7 @@ tests/
 
 ---
 
-## clangd / CoC
+# clangd / CoC
 
 | Key        | Action                |
 | ---------- | --------------------- |
@@ -1068,6 +1132,8 @@ tests/
 | F11 | GDB `step`                 |
 | F12 | GDB `continue`             |
 
+---
+
 ## CMake
 
 | Key      | Action                   |
@@ -1078,6 +1144,8 @@ tests/
 | Space bt | Select Executable Target |
 | Space br | Build + Run              |
 | Space ba | Show All Targets         |
+
+---
 
 ## Other
 
@@ -1097,23 +1165,32 @@ tests/
 # Design Principles
 
 1. **CMake is the Source of Truth for project configuration.**
+
 2. **Vim does not duplicate compiler options or build configuration.**
+
 3. **Preset-based workflows are used only when a Configure Preset has been explicitly selected.**
+
 4. **If a Preset file exists but no Preset is selected, Fallback CMake is used.**
+
 5. **Projects without Presets are supported through Fallback CMake.**
+
 6. **The project root is discovered relative to the currently opened file.**
-7. **Executable paths are not guessed; the CMake File API is used to discover Targets and Artifacts.**
-8. **clangd uses compilation information from the currently active Build Directory.**
+
+7. **Executable paths are not guessed; the CMake File API is used to discover targets and artifacts.**
+
+8. **clangd uses compilation information from the currently active build directory.**
+
 9. **ASan, UBSan, and Coverage are managed as CMake Build Configurations.**
-10. **GDB and Valgrind operate on actual `EXECUTABLE` Targets.**
+
+10. **GDB and Valgrind operate on actual `EXECUTABLE` targets.**
 
 ---
 
-# Goal
+# The Goal
 
 The goal of this project is not to create a Vim configuration tied to a specific project.
 
-Instead, it aims to provide a **Universal CMake Workflow** that allows a wide range of C and C++ projects:
+Instead, `vim-universal-cmake` aims to provide a universal workflow for a wide range of C and C++ projects:
 
 ```text
 CMake
@@ -1126,9 +1203,52 @@ Coverage
 Monorepo
 ```
 
-to be managed through a single Vim interface:
+through a single Vim interface:
 
 ```text
+Configure
+    ↓
+Build
+    ↓
+Run
+    ↓
+Test
+    ↓
+Debug
+    ↓
+Analyze
+```
+
+```text
+CMake describes the project.
+
+Vim drives the workflow.
+```
+
+---
+
+# Philosophy
+
+```text
+CMake
+    │
+    │  Source of Truth
+    ▼
+Project Configuration
+    │
+    ├── Compiler
+    ├── Language Standard
+    ├── Include Paths
+    ├── Compile Options
+    ├── Link Options
+    ├── Targets
+    ├── Tests
+    └── Build Configurations
+    │
+    ▼
+vim-universal-cmake
+    │
+    ▼
 Configure
 Build
 Run
@@ -1136,3 +1256,11 @@ Test
 Debug
 Analyze
 ```
+
+The project does not attempt to replace CMake.
+
+It attempts to make working with existing CMake projects from Vim feel consistent.
+
+> **CMake describes the project.**
+>
+> **Vim drives the workflow.**
