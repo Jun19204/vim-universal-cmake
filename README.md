@@ -28,7 +28,19 @@ ASan / UBSan
 Coverage
 ```
 
+---
+
+## vim-universal-cmake demo
+
 ![vim-universal-cmake demo](assets/demo.gif)
+
+## Multiple Executable Targets
+
+![Multiple executable targets](assets/multi-target.gif)
+
+## CMake Presets
+
+![CMake Presets and AddressSanitizer](assets/preset-asan.gif)
 
 ---
 
@@ -339,12 +351,12 @@ ripgrep
               │               │    Executable       clangd
               │               │         │
               ▼               ▼         │
-          CMake Preset      CTest        │
-          or Fallback                     │
-                                         ▼
-                                ┌────────┼────────┐
-                                ▼        ▼        ▼
-                               Run      GDB    Valgrind
+          CMake Preset      CTest       │
+          or Fallback                   │
+                                        ▼
+                               ┌────────┼────────┐
+                               ▼        ▼        ▼
+                              Run      GDB    Valgrind
 ```
 
 Vim does not separately manage the project's:
