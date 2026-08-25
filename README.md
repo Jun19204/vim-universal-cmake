@@ -1,8 +1,10 @@
-# WSL/Linux Modern C/C++ Vim Development Environment
+# vim-universal-cmake
+
+" A universal CMake workflow for modern C/C++ development in Vim "
 
 CMake를 중심으로 구성한 **Vim 기반 Modern C/C++20/23 Development Environment**입니다.
 
-이 Dotfiles는 다음 환경을 하나의 workflow로 통합하는 것을 목표로 합니다.
+이것은 다음 환경을 하나의 workflow로 통합하는 것을 목표로 합니다.
 
 > **Vim + CMake + C++20/23 + clangd + CoC + CTest + GDB + Valgrind + Sanitizers**
 
@@ -169,8 +171,8 @@ Vim은 프로젝트의:
 저장소를 클론합니다.
 
 ```bash
-git clone https://github.com/Jun19204/dotfiles.git ~/dotfiles
-cd ~/dotfiles
+git clone https://github.com/Jun19204/vim-universal-cmake ~/vim-universal-cmake
+cd ~/vim-universal-cmake
 ```
 
 ## Fedora / RHEL
