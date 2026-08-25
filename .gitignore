@@ -1,0 +1,15 @@
+# Vim 임시 및 스왑 파일
+*.swp
+*.swo
+*~
+.netrwhist
+undo/
+view/
+
+# OS 자동 생성 파일
+.DS_Store
+Thumbs.db
+
+# 외부 Vim 플러그인 설치 디렉터리 제외
+.vim/plugged/
+.vim/bundle/
