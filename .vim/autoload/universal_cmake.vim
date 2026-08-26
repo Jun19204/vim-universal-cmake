@@ -640,12 +640,16 @@ endfunction
 function! universal_cmake#compile_commands() abort
   let l:p = s:Project()
   if !empty(l:p.build_dir)
-        \ && filereadable(
-        \ l:p.build_dir . '/compile_commands.json')
+        \ && filereadable(l:p.build_dir . '/compile_commands.json')
     return simplify(
           \ fnamemodify(
           \ l:p.build_dir . '/compile_commands.json',
           \ ':p'))
+  endif
+  let l:root = universal_cmake#root()
+  let l:root_cc = l:root . '/compile_commands.json'
+  if filereadable(l:root_cc)
+    return simplify(fnamemodify(l:root_cc, ':p'))
   endif
   return ''
 endfunction
