@@ -24,6 +24,10 @@ UNIVERSAL_CMAKE_PLUGIN_SOURCE=\
 PLUG_VIM="$AUTOLOAD_DIR/plug.vim"
 COC_DIR="$VIM_DIR/plugged/coc.nvim"
 
+# Fedora에서는 vim-enhanced의 `vim`이 -clipboard이므로
+# vim-X11의 `gvim -v`를 터미널용 Vim으로 사용한다.
+VIM_CMD=(gvim -v)
+
 # ==========================================
 # 1. Fedora 시스템 패키지 설치
 # ==========================================
@@ -55,25 +59,26 @@ sudo dnf install -y \
     nodejs-npm
 
 # ==========================================
-# Vim 및 npm 기능 검증
+# Vim clipboard 및 npm 기능 검증
 # ==========================================
 
 echo "==> Vim clipboard 지원 확인"
 
-if ! command -v vim >/dev/null 2>&1; then
-    echo "❌ vim 실행 파일을 찾지 못했습니다."
+if ! command -v gvim >/dev/null 2>&1; then
+    echo "❌ gvim 실행 파일을 찾지 못했습니다."
+    echo "   vim-X11 패키지가 정상적으로 설치되었는지 확인해주세요."
     exit 1
 fi
 
-if ! vim --version | grep -q '^+clipboard'; then
-    echo "❌ 현재 vim은 +clipboard 기능을 지원하지 않습니다."
+if ! gvim --version | grep -q '^+clipboard'; then
+    echo "❌ 현재 gvim은 +clipboard 기능을 지원하지 않습니다."
     echo
-    echo "현재 Vim clipboard 관련 feature:"
-    vim --version | grep -E 'clipboard|wayland|X11|xterm' || true
+    echo "현재 gvim clipboard 관련 feature:"
+    gvim --version | grep -E 'clipboard|wayland|X11|xterm' || true
     exit 1
 fi
 
-echo "    ✓ Vim +clipboard 지원 확인"
+echo "    ✓ gvim +clipboard 지원 확인"
 
 echo "==> npm 설치 확인"
 
@@ -163,7 +168,7 @@ fi
 
 echo "==> Vim 플러그인 설치"
 
-vim +PlugInstall +qall
+"${VIM_CMD[@]}" +PlugInstall +qall
 
 # ==========================================
 # 5. CoC 확장 모듈 설치
@@ -177,7 +182,7 @@ if [[ ! -d "$COC_DIR" ]]; then
     exit 1
 fi
 
-vim -c 'CocInstall -sync coc-clangd' +qall
+"${VIM_CMD[@]}" -c 'CocInstall -sync coc-clangd' +qall
 
 echo
 echo "=========================================="
