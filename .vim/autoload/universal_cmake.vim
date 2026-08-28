@@ -15,26 +15,13 @@ function! s:FindProjectRoot() abort
   if empty(l:start) || !isdirectory(l:start)
     let l:start = getcwd()
   endif
-  let l:dir = resolve(fnamemodify(l:start, ':p'))
-  " fallback용: 가장 가까운 CMake 프로젝트 디렉터리를 기억한다.
-  let l:nearest_cmake = ''
+  let l:start = resolve(fnamemodify(l:start, ':p'))
+  " 1. 가장 가까운 CMakePresets.json / CMakeUserPresets.json
+  let l:dir = l:start
   while 1
-    let l:cmake = l:dir . '/CMakeLists.txt'
-    if empty(l:nearest_cmake)
-          \ && filereadable(l:cmake)
-      let l:nearest_cmake = l:dir
-    endif
-    " 1순위:
     if filereadable(l:dir . '/CMakeUserPresets.json')
           \ || filereadable(l:dir . '/CMakePresets.json')
       return l:dir
-    endif
-    if filereadable(l:cmake)
-      for l:line in readfile(l:cmake)
-        if l:line =~? '^\s*project\s*('
-          return l:dir
-        endif
-      endfor
     endif
     let l:parent = fnamemodify(l:dir, ':h')
     if l:parent ==# l:dir
@@ -42,14 +29,29 @@ function! s:FindProjectRoot() abort
     endif
     let l:dir = l:parent
   endwhile
-  " 2순위 fallback:
-  if !empty(l:nearest_cmake)
-    return l:nearest_cmake
+  " 2. 가장 가까운 CMakeLists.txt
+  let l:cmake =
+        \ findfile(
+        \ 'CMakeLists.txt',
+        \ l:start . ';')
+  if !empty(l:cmake)
+    return resolve(
+          \ fnamemodify(
+          \ l:cmake,
+          \ ':p:h'))
   endif
-  let l:git = finddir('.git', l:start . ';')
+  " 3. Git root
+  let l:git =
+        \ finddir(
+        \ '.git',
+        \ l:start . ';')
   if !empty(l:git)
-    return resolve(fnamemodify(l:git, ':p:h'))
+    return resolve(
+          \ fnamemodify(
+          \ l:git,
+          \ ':p:h'))
   endif
+  " 4. 현재 작업 디렉터리
   return resolve(getcwd())
 endfunction
 
@@ -149,7 +151,6 @@ endfunction
 function! s:PresetFiles() abort
   let l:root = universal_cmake#root()
   let l:files = []
-
   for l:name in [
         \ 'CMakePresets.json',
         \ 'CMakeUserPresets.json'
@@ -314,9 +315,9 @@ function! s:BuildPresetMap() abort
 endfunction
 
 function! s:VisibleConfigurePresets() abort
+  let l:raw = s:PresetMap('configure')
   let l:result = []
-  for [l:name, l:preset]
-        \ in items(s:ConfigurePresetMap())
+  for [l:name, l:preset] in items(l:raw)
     if !get(l:preset, 'hidden', v:false)
       call add(l:result, l:name)
     endif
