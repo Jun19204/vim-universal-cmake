@@ -2,6 +2,10 @@
 set -euo pipefail
 
 # ==========================================
+# Fedora Vim / C++ Development Environment
+# ==========================================
+
+# ==========================================
 # 0. 디렉토리 및 환경 변수 설정
 # ==========================================
 
@@ -24,10 +28,13 @@ UNIVERSAL_CMAKE_PLUGIN_SOURCE=\
 PLUG_VIM="$AUTOLOAD_DIR/plug.vim"
 COC_DIR="$VIM_DIR/plugged/coc.nvim"
 
-# Fedora의 vim-enhanced는 -clipboard일 수 있다.
-# vim-X11의 gvim은 +clipboard를 지원하므로
-# gvim -v를 터미널용 Vim으로 사용한다.
+# 설치/자동화에는 일반 Vim 사용
+INSTALL_VIM=(vim)
+
+# 실제 터미널에서 사용하는 Vim
+# Fedora vim-X11의 GVim terminal mode
 VIM_CMD=(gvim -v)
+
 
 # ==========================================
 # 1. Fedora 시스템 패키지 설치
@@ -59,8 +66,9 @@ sudo dnf install -y \
     nodejs \
     nodejs-npm
 
+
 # ==========================================
-# Vim 및 npm 기능 검증
+# Vim 및 npm 실행 파일 검증
 # ==========================================
 
 echo "==> Vim 실행 파일 확인"
@@ -79,17 +87,39 @@ fi
 echo "    ✓ vim:  $(command -v vim)"
 echo "    ✓ gvim: $(command -v gvim)"
 
+
+# ==========================================
+# GVim clipboard 지원 확인
+# ==========================================
+
 echo "==> GVim clipboard 지원 확인"
 
-if ! gvim --version | grep -Eq '(^|[[:space:]])\+clipboard([[:space:]]|$)'; then
+# 주의:
+# set -o pipefail 환경에서
+#
+#     gvim --version | grep -q ...
+#
+# 형태를 사용하면 grep이 먼저 종료한 뒤
+# gvim이 SIGPIPE(141)를 받을 수 있다.
+#
+# 따라서 gvim의 전체 출력을 먼저 저장한 다음 검사한다.
+
+GVIM_VERSION="$(gvim --version)"
+
+if ! grep -qw '+clipboard' <<< "$GVIM_VERSION"; then
     echo "❌ 현재 gvim은 +clipboard 기능을 지원하지 않습니다."
     echo
     echo "현재 gvim clipboard 관련 feature:"
-    gvim --version | grep -E 'clipboard|wayland|X11|xterm' || true
+    grep -E 'clipboard|wayland|X11|xterm' <<< "$GVIM_VERSION" || true
     exit 1
 fi
 
 echo "    ✓ gvim +clipboard 지원 확인"
+
+
+# ==========================================
+# npm 설치 확인
+# ==========================================
 
 echo "==> npm 설치 확인"
 
@@ -99,6 +129,7 @@ if ! command -v npm >/dev/null 2>&1; then
 fi
 
 echo "    ✓ npm: $(command -v npm)"
+
 
 # ==========================================
 # 2. 디렉토리 구조 생성
@@ -110,6 +141,7 @@ mkdir -p \
     "$AUTOLOAD_DIR" \
     "$PLUGIN_DIR" \
     "$CACHE_DIR"
+
 
 # ==========================================
 # 3. 필수 파일 검증 및 심볼릭 링크 설정
@@ -134,6 +166,7 @@ done
 
 echo "    ✓ 필수 설정 파일 확인"
 
+
 ln -sfn \
     "$VIMRC_SOURCE" \
     "$HOME/.vimrc"
@@ -149,6 +182,9 @@ ln -sfn \
 ln -sfn \
     "$UNIVERSAL_CMAKE_PLUGIN_SOURCE" \
     "$PLUGIN_DIR/universal_cmake.vim"
+
+echo "    ✓ 심볼릭 링크 설정 완료"
+
 
 # ==========================================
 # 4. vim-plug 설치 및 플러그인 동기화
@@ -173,15 +209,19 @@ if [[ ! -f "$PLUG_VIM" ]]; then
     exit 1
 fi
 
+echo "    ✓ vim-plug 확인"
+
+
 echo "==> Vim 플러그인 설치"
 
-"${VIM_CMD[@]}" +PlugInstall +qall
+"${INSTALL_VIM[@]}" +PlugInstall +qall
+
 
 # ==========================================
-# 5. CoC 확장 모듈 설치
+# coc.nvim 설치 검증
 # ==========================================
 
-echo "==> [5/5] CoC 확장 모듈 (coc-clangd) 설치"
+echo "==> coc.nvim 설치 확인"
 
 if [[ ! -d "$COC_DIR" ]]; then
     echo "❌ coc.nvim 디렉토리를 찾지 못했습니다."
@@ -189,9 +229,88 @@ if [[ ! -d "$COC_DIR" ]]; then
     exit 1
 fi
 
-"${VIM_CMD[@]}" -c 'CocInstall -sync coc-clangd' +qall
+if [[ ! -f "$COC_DIR/plugin/coc.vim" ]]; then
+    echo "❌ coc.nvim 설치가 올바르지 않습니다."
+    echo "   다음 파일을 찾지 못했습니다:"
+    echo "   $COC_DIR/plugin/coc.vim"
+    exit 1
+fi
+
+echo "    ✓ coc.nvim 설치 확인"
+
+
+# ==========================================
+# 5. CoC 확장 모듈 설치
+# ==========================================
+
+echo "==> [5/5] CoC 확장 모듈 (coc-clangd) 설치"
+
+"${INSTALL_VIM[@]}" \
+    -c 'CocInstall -sync coc-clangd' \
+    +qall
+
+
+# ==========================================
+# 최종 설치 검증
+# ==========================================
+
+echo
+echo "==> 최종 설치 검증"
+
+if [[ ! -f "$HOME/.vimrc" ]]; then
+    echo "❌ ~/.vimrc 링크를 찾지 못했습니다."
+    exit 1
+fi
+
+if [[ ! -f "$VIM_DIR/coc-settings.json" ]]; then
+    echo "❌ ~/.vim/coc-settings.json 링크를 찾지 못했습니다."
+    exit 1
+fi
+
+if [[ ! -f "$AUTOLOAD_DIR/universal_cmake.vim" ]]; then
+    echo "❌ universal_cmake.vim autoload 파일을 찾지 못했습니다."
+    exit 1
+fi
+
+if [[ ! -f "$PLUGIN_DIR/universal_cmake.vim" ]]; then
+    echo "❌ universal_cmake.vim plugin 파일을 찾지 못했습니다."
+    exit 1
+fi
+
+if [[ ! -d "$COC_DIR" ]]; then
+    echo "❌ coc.nvim 설치를 확인할 수 없습니다."
+    exit 1
+fi
+
+echo "    ✓ ~/.vimrc"
+echo "    ✓ ~/.vim/coc-settings.json"
+echo "    ✓ universal_cmake autoload"
+echo "    ✓ universal_cmake plugin"
+echo "    ✓ coc.nvim"
+echo "    ✓ gvim +clipboard"
+
+
+# ==========================================
+# 완료
+# ==========================================
 
 echo
 echo "=========================================="
 echo "    설치가 성공적으로 완료되었습니다!     "
 echo "=========================================="
+echo
+echo "터미널 Vim 실행:"
+echo "    gvim -v"
+echo
+echo "Vim clipboard 확인:"
+echo "    :version"
+echo
+echo "CoC 확인:"
+echo "    :CocInfo"
+echo
+echo "Universal CMake:"
+echo "    F5  Build"
+echo "    F6  Run"
+echo "    F7  Test"
+echo "    F8  GDB"
+echo
