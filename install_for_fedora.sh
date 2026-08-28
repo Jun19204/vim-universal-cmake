@@ -24,6 +24,11 @@ UNIVERSAL_CMAKE_PLUGIN_SOURCE=\
 PLUG_VIM="$AUTOLOAD_DIR/plug.vim"
 COC_DIR="$VIM_DIR/plugged/coc.nvim"
 
+# Fedora의 vim-enhanced는 -clipboard일 수 있다.
+# vim-X11의 gvim은 +clipboard를 지원하므로
+# gvim -v를 터미널용 Vim으로 사용한다.
+VIM_CMD=(gvim -v)
+
 # ==========================================
 # 1. Fedora 시스템 패키지 설치
 # ==========================================
@@ -62,11 +67,8 @@ echo "==> Vim 실행 파일 확인"
 
 if ! command -v vim >/dev/null 2>&1; then
     echo "❌ vim 실행 파일을 찾지 못했습니다."
-    echo "   vim-enhanced 패키지가 정상적으로 설치되었는지 확인해주세요."
     exit 1
 fi
-
-echo "    ✓ vim: $(command -v vim)"
 
 if ! command -v gvim >/dev/null 2>&1; then
     echo "❌ gvim 실행 파일을 찾지 못했습니다."
@@ -74,17 +76,12 @@ if ! command -v gvim >/dev/null 2>&1; then
     exit 1
 fi
 
+echo "    ✓ vim:  $(command -v vim)"
 echo "    ✓ gvim: $(command -v gvim)"
-
-# ------------------------------------------
-# Fedora의 터미널 Vim(vim-enhanced)은
-# +clipboard를 제공하지 않을 수 있으므로
-# clipboard 기능은 gvim을 기준으로 검증한다.
-# ------------------------------------------
 
 echo "==> GVim clipboard 지원 확인"
 
-if ! gvim --version | grep -q '^+clipboard'; then
+if ! gvim --version | grep -Eq '(^|[[:space:]])\+clipboard([[:space:]]|$)'; then
     echo "❌ 현재 gvim은 +clipboard 기능을 지원하지 않습니다."
     echo
     echo "현재 gvim clipboard 관련 feature:"
@@ -94,20 +91,14 @@ fi
 
 echo "    ✓ gvim +clipboard 지원 확인"
 
-# ------------------------------------------
-# npm 확인
-# ------------------------------------------
-
 echo "==> npm 설치 확인"
 
 if ! command -v npm >/dev/null 2>&1; then
     echo "❌ npm 실행 파일을 찾지 못했습니다."
-    echo "   nodejs-npm 패키지가 정상적으로 설치되었는지 확인해주세요."
     exit 1
 fi
 
 echo "    ✓ npm: $(command -v npm)"
-echo "    ✓ npm version: $(npm --version)"
 
 # ==========================================
 # 2. 디렉토리 구조 생성
@@ -143,22 +134,18 @@ done
 
 echo "    ✓ 필수 설정 파일 확인"
 
-# .vimrc
 ln -sfn \
     "$VIMRC_SOURCE" \
     "$HOME/.vimrc"
 
-# coc-settings.json
 ln -sfn \
     "$COC_SETTINGS_SOURCE" \
     "$VIM_DIR/coc-settings.json"
 
-# universal_cmake.vim (autoload)
 ln -sfn \
     "$UNIVERSAL_CMAKE_AUTOLOAD_SOURCE" \
     "$AUTOLOAD_DIR/universal_cmake.vim"
 
-# universal_cmake.vim (plugin)
 ln -sfn \
     "$UNIVERSAL_CMAKE_PLUGIN_SOURCE" \
     "$PLUGIN_DIR/universal_cmake.vim"
@@ -188,7 +175,7 @@ fi
 
 echo "==> Vim 플러그인 설치"
 
-vim +PlugInstall +qall
+"${VIM_CMD[@]}" +PlugInstall +qall
 
 # ==========================================
 # 5. CoC 확장 모듈 설치
@@ -202,7 +189,7 @@ if [[ ! -d "$COC_DIR" ]]; then
     exit 1
 fi
 
-vim -c 'CocInstall -sync coc-clangd' +qall
+"${VIM_CMD[@]}" -c 'CocInstall -sync coc-clangd' +qall
 
 echo
 echo "=========================================="
