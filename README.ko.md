@@ -178,22 +178,19 @@ cd ~/vim-universal-cmake
 ## Fedora / RHEL
 
 ```bash
-chmod +x install_for_fedora.sh
-./install_for_fedora.sh
+bash ./install_for_fedora.sh
 ```
 
 ## Arch Linux
 
 ```bash
-chmod +x install_for_arch.sh
-./install_for_arch.sh
+bash ./install_for_arch.sh
 ```
 
 ## Debian / Ubuntu
 
 ```bash
-chmod +x install_for_debian.sh
-./install_for_debian.sh
+bash ./install_for_debian.sh
 ```
 
 설치 스크립트는 필요한 패키지와 Vim 개발 환경을 구성합니다.

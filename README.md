@@ -283,22 +283,19 @@ cd ~/vim-universal-cmake
 ## Fedora / RHEL
 
 ```bash
-chmod +x install_for_fedora.sh
-./install_for_fedora.sh
+bash ./install_for_fedora.sh
 ```
 
 ## Arch Linux
 
 ```bash
-chmod +x install_for_arch.sh
-./install_for_arch.sh
+bash ./install_for_arch.sh
 ```
 
 ## Debian / Ubuntu
 
 ```bash
-chmod +x install_for_debian.sh
-./install_for_debian.sh
+bash ./install_for_debian.sh
 ```
 
 The installation scripts set up the required packages and the Vim development environment.
