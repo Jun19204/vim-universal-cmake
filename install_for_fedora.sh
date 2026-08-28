@@ -4,27 +4,41 @@ set -euo pipefail
 # ==========================================
 # 0. 디렉토리 및 환경 변수 설정
 # ==========================================
+
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VIM_DIR="$HOME/.vim"
 AUTOLOAD_DIR="$VIM_DIR/autoload"
 PLUGIN_DIR="$VIM_DIR/plugin"
 
 echo "==> [1/5] 기본 시스템 패키지 설치 (Fedora/WSL)"
+
 if command -v dnf &> /dev/null; then
     sudo dnf check-update || true
 
     sudo dnf install -y \
-        gcc gcc-c++ clang clang-tools-extra \
-        cmake ninja-build \
-        gdb valgrind \
-        git curl ripgrep fzf \
-        vim gvim \
-        nodejs npm
+        gcc \
+        gcc-c++ \
+        clang \
+        clang-tools-extra \
+        cmake \
+        ninja-build \
+        gdb \
+        valgrind \
+        git \
+        curl \
+        ripgrep \
+        fzf \
+        vim \
+        gvim \
+        nodejs \
+        npm
 else
-    echo "⚠️  dnf 패키지 매니저를 찾지 못했습니다. 패키지 수동 설치가 필요할 수 있습니다."
+    echo "⚠️ dnf 패키지 매니저를 찾지 못했습니다. Fedora 환경인지 확인해주세요."
+    exit 1
 fi
 
 echo "==> [2/5] 디렉토리 구조 생성"
+
 mkdir -p \
     "$AUTOLOAD_DIR" \
     "$PLUGIN_DIR" \
@@ -75,6 +89,5 @@ if [ -d "$VIM_DIR/plugged/coc.nvim" ]; then
 fi
 
 echo "=========================================="
-echo "    설치가 성공적으로 완료되었습니다!     "
+echo "    Fedora 설치가 성공적으로 완료되었습니다!"
 echo "=========================================="
-
