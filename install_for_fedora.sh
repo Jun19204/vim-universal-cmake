@@ -49,12 +49,13 @@ sudo dnf install -y \
     curl \
     ripgrep \
     fzf \
-    gvim \
+    vim-enhanced \
+    vim-X11 \
     nodejs \
-    npm
+    nodejs-npm
 
 # ==========================================
-# Vim clipboard 기능 검증
+# Vim 및 npm 기능 검증
 # ==========================================
 
 echo "==> Vim clipboard 지원 확인"
@@ -73,6 +74,15 @@ if ! vim --version | grep -q '^+clipboard'; then
 fi
 
 echo "    ✓ Vim +clipboard 지원 확인"
+
+echo "==> npm 설치 확인"
+
+if ! command -v npm >/dev/null 2>&1; then
+    echo "❌ npm 실행 파일을 찾지 못했습니다."
+    exit 1
+fi
+
+echo "    ✓ npm 설치 확인"
 
 # ==========================================
 # 2. 디렉토리 구조 생성
