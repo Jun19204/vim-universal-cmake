@@ -24,10 +24,6 @@ UNIVERSAL_CMAKE_PLUGIN_SOURCE=\
 PLUG_VIM="$AUTOLOAD_DIR/plug.vim"
 COC_DIR="$VIM_DIR/plugged/coc.nvim"
 
-# Fedora에서는 vim-enhanced의 `vim`이 -clipboard이므로
-# vim-X11의 `gvim -v`를 터미널용 Vim으로 사용한다.
-VIM_CMD=(gvim -v)
-
 # ==========================================
 # 1. Fedora 시스템 패키지 설치
 # ==========================================
@@ -59,16 +55,34 @@ sudo dnf install -y \
     nodejs-npm
 
 # ==========================================
-# Vim clipboard 및 npm 기능 검증
+# Vim 및 npm 기능 검증
 # ==========================================
 
-echo "==> Vim clipboard 지원 확인"
+echo "==> Vim 실행 파일 확인"
+
+if ! command -v vim >/dev/null 2>&1; then
+    echo "❌ vim 실행 파일을 찾지 못했습니다."
+    echo "   vim-enhanced 패키지가 정상적으로 설치되었는지 확인해주세요."
+    exit 1
+fi
+
+echo "    ✓ vim: $(command -v vim)"
 
 if ! command -v gvim >/dev/null 2>&1; then
     echo "❌ gvim 실행 파일을 찾지 못했습니다."
     echo "   vim-X11 패키지가 정상적으로 설치되었는지 확인해주세요."
     exit 1
 fi
+
+echo "    ✓ gvim: $(command -v gvim)"
+
+# ------------------------------------------
+# Fedora의 터미널 Vim(vim-enhanced)은
+# +clipboard를 제공하지 않을 수 있으므로
+# clipboard 기능은 gvim을 기준으로 검증한다.
+# ------------------------------------------
+
+echo "==> GVim clipboard 지원 확인"
 
 if ! gvim --version | grep -q '^+clipboard'; then
     echo "❌ 현재 gvim은 +clipboard 기능을 지원하지 않습니다."
@@ -80,14 +94,20 @@ fi
 
 echo "    ✓ gvim +clipboard 지원 확인"
 
+# ------------------------------------------
+# npm 확인
+# ------------------------------------------
+
 echo "==> npm 설치 확인"
 
 if ! command -v npm >/dev/null 2>&1; then
     echo "❌ npm 실행 파일을 찾지 못했습니다."
+    echo "   nodejs-npm 패키지가 정상적으로 설치되었는지 확인해주세요."
     exit 1
 fi
 
-echo "    ✓ npm 설치 확인"
+echo "    ✓ npm: $(command -v npm)"
+echo "    ✓ npm version: $(npm --version)"
 
 # ==========================================
 # 2. 디렉토리 구조 생성
@@ -168,7 +188,7 @@ fi
 
 echo "==> Vim 플러그인 설치"
 
-"${VIM_CMD[@]}" +PlugInstall +qall
+vim +PlugInstall +qall
 
 # ==========================================
 # 5. CoC 확장 모듈 설치
@@ -182,7 +202,7 @@ if [[ ! -d "$COC_DIR" ]]; then
     exit 1
 fi
 
-"${VIM_CMD[@]}" -c 'CocInstall -sync coc-clangd' +qall
+vim -c 'CocInstall -sync coc-clangd' +qall
 
 echo
 echo "=========================================="
