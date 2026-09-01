@@ -6,6 +6,13 @@
   "clangd.inlayHints.parameterNames": true,
   "clangd.inlayHints.deducedTypes": true,
 
+  "clangd.arguments": [
+    "--background-index",
+    "--clang-tidy",
+    "--header-insertion=iwyu",
+    "--completion-style=detailed"
+  ],
+
   "semanticTokens.enable": true,
 
   "suggest.noselect": true,
@@ -23,3 +30,4 @@
     "border": true
   }
 }
+
