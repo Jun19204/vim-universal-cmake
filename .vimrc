@@ -54,7 +54,18 @@ colorscheme gruvbox
 
 let g:airline_theme = 'gruvbox'
 let g:airline_powerline_fonts = 0
+
+" VS Code처럼 열린 버퍼를 상단 탭에 표시
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#show_buffers = 1
+let g:airline#extensions#tabline#show_tabs = 0
+let g:airline#extensions#tabline#formatter = 'unique_tail'
+
 let g:vim_json_conceal = 0
+
+set showtabline=2
+set hidden
+set mouse=a
 
 augroup CustomHighlights
   autocmd!
@@ -103,6 +114,11 @@ nnoremap <silent> <leader>cf :call <SID>FormatCode()<CR>
 nnoremap <C-n> :NERDTreeToggle<CR>
 nnoremap <C-p> :Files<CR>
 nnoremap <leader>rg :Rg<CR>
+
+" 열린 파일(buffer) 이동 및 닫기
+nnoremap <silent> [b :bprevious<CR>
+nnoremap <silent> ]b :bnext<CR>
+nnoremap <silent> <leader>bx :bdelete<CR>
 
 " =================================================================
 " Insert / Completion
