@@ -266,7 +266,7 @@ function! s:ResolvePreset(map, name, stack) abort
     let l:parents = [l:parents]
   endif
   let l:result = {}
-  for l:parent_name in l:parents
+  for l:parent_name in reverse(copy(l:parents))
     let l:parent =
           \ s:ResolvePreset(
           \ a:map,
@@ -314,6 +314,9 @@ function! s:BuildPresetMap() abort
   return l:result
 endfunction
 
+" NOTE:
+" Preset condition은 CMake가 최종 평가한다.
+" 여기서는 hidden preset만 선택 목록에서 제외한다.
 function! s:VisibleConfigurePresets() abort
   let l:raw = s:PresetMap('configure')
   let l:result = []
@@ -327,9 +330,9 @@ endfunction
 
 function! s:BuildPresetsFor(configure_name) abort
   let l:result = []
-  for [l:name, l:preset]
-        \ in items(s:BuildPresetMap())
-    if get(
+  for [l:name, l:preset] in items(s:BuildPresetMap())
+    if !get(l:preset, 'hidden', v:false)
+          \ && get(
           \ l:preset,
           \ 'configurePreset',
           \ '') ==# a:configure_name
@@ -767,16 +770,10 @@ function! universal_cmake#update_clangd() abort
       let l:p.build_dir = l:dir
     endif
   endif
-  " 5. compile_commands.json이 없으면 Configure
+  " 5. compile_commands.json이 없으면 조용히 종료
+  " Configure는 사용자가 CMakeConfigure 또는 Build로 명시적으로 수행한다.
   if empty(l:dir)
-    if !universal_cmake#configure()
-      return
-    endif
-    let l:dir =
-          \ universal_cmake#clangd_dir()
-    if empty(l:dir)
-      return
-    endif
+    return
   endif
   " 6. 동일한 compile database를 이미 사용 중이면 종료
   if get(s:clangd_dirs, l:root, '') ==# l:dir
@@ -808,6 +805,24 @@ function! s:CodeModel(build_dir) abort
   return l:files[0]
 endfunction
 
+function! s:ActiveConfig() abort
+  let l:p = s:Project()
+  if !empty(l:p.build_preset)
+    let l:presets = s:BuildPresetMap()
+    if has_key(l:presets, l:p.build_preset)
+      let l:config =
+            \ get(
+            \ l:presets[l:p.build_preset],
+            \ 'configuration',
+            \ '')
+      if !empty(l:config)
+        return l:config
+      endif
+    endif
+  endif
+  return l:p.config
+endfunction
+
 function! s:Targets(build_dir) abort
   let l:model_file = s:CodeModel(a:build_dir)
   if empty(l:model_file)
@@ -820,45 +835,21 @@ function! s:Targets(build_dir) abort
         \ ':h')
   let l:targets = []
   let l:seen = {}
-  for l:config in get(l:model, 'configurations', [])
-    for l:ref in get(l:config, 'targets', [])
-      let l:file =
-            \ l:reply
-            \ . '/'
-            \ . get(l:ref, 'jsonFile', '')
-      let l:data = s:ReadJSON(l:file)
-      let l:name = get(l:data, 'name', '')
-      let l:type = get(l:data, 'type', '')
-      if empty(l:name)
-            \ || has_key(l:seen, l:name)
-        continue
-      endif
-      let l:artifacts = []
-      for l:item in get(l:data, 'artifacts', [])
-        let l:path =
-              \ get(l:item, 'path', '')
-        if !empty(l:path)
-          if l:path !~# '^/'
-            let l:path =
-                  \ a:build_dir
-                  \ . '/'
-                  \ . l:path
-          endif
-          call add(
-                \ l:artifacts,
-                \ simplify(
-                \ fnamemodify(
-                \ l:path,
-                \ ':p')))
-        endif
-      endfor
-      call add(l:targets, {
-            \ 'name': l:name,
-            \ 'type': l:type,
-            \ 'artifacts': l:artifacts
-            \ })
-      let l:seen[l:name] = 1
-    endfor
+  let l:configs =
+        \ get(
+        \ l:model,
+        \ 'configurations',
+        \ [])
+  let l:active_config = s:ActiveConfig()
+  let l:matching_configs =
+        \ filter(
+        \ copy(l:configs),
+        \ 'get(v:val, "name", "") ==# l:active_config')
+  if !empty(l:matching_configs)
+    let l:configs = l:matching_configs
+  endif
+  for l:config in l:configs
+    " 기존 내부 코드 그대로 유지
   endfor
   return l:targets
 endfunction
@@ -1012,6 +1003,11 @@ endfunction
 function! universal_cmake#gdb() abort
   if !executable('gdb')
     echoerr 'gdb가 설치되어 있지 않습니다.'
+    return
+  endif
+  if s:gdb_job != -1
+        \ && job_status(s:gdb_job) ==# 'run'
+    echoerr '이미 실행 중인 GDB가 있습니다.'
     return
   endif
   if !universal_cmake#build()

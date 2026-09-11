@@ -190,10 +190,10 @@ endif
 " =================================================================
 
 " Build / Run / Test / Debug
-nnoremap <silent> <F5> :w<CR>:CMakeBuild<CR>
-nnoremap <silent> <F6> :w<CR>:CMakeRun<CR>
-nnoremap <silent> <F7> :w<CR>:CMakeTest<CR>
-nnoremap <silent> <F8> :w<CR>:CMakeGDB<CR>
+nnoremap <silent> <F5> :wall<CR>:CMakeBuild<CR>
+nnoremap <silent> <F6> :wall<CR>:CMakeRun<CR>
+nnoremap <silent> <F7> :wall<CR>:CMakeTest<CR>
+nnoremap <silent> <F8> :wall<CR>:CMakeGDB<CR>
 
 " Configure / Presets
 nnoremap <silent> <leader>bc :CMakeConfigure<CR>
