@@ -209,15 +209,6 @@ nnoremap <silent> <leader>ba :CMakeTargets<CR>
 nnoremap <silent> <leader>bd :CMakeGDB<CR>
 nnoremap <silent> <leader>bk :CMakeBreakpoint<CR>
 
-nnoremap <silent> <F10> :call universal_cmake#gdb_send('next')<CR>
-tnoremap <silent> <F10> <C-\><C-n>:call universal_cmake#gdb_send('next')<CR>i
-
-nnoremap <silent> <F11> :call universal_cmake#gdb_send('step')<CR>
-tnoremap <silent> <F11> <C-\><C-n>:call universal_cmake#gdb_send('step')<CR>i
-
-nnoremap <silent> <F12> :call universal_cmake#gdb_send('continue')<CR>
-tnoremap <silent> <F12> <C-\><C-n>:call universal_cmake#gdb_send('continue')<CR>i
-
 " Test / Analysis
 nnoremap <silent> <leader>tb :CMakeTest<CR>
 nnoremap <silent> <leader>tc :CMakeTestCurrent<CR>
