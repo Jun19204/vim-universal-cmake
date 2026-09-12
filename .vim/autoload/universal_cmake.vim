@@ -829,10 +829,7 @@ function! s:Targets(build_dir) abort
     return []
   endif
   let l:model = s:ReadJSON(l:model_file)
-  let l:reply =
-        \ fnamemodify(
-        \ l:model_file,
-        \ ':h')
+  let l:reply = fnamemodify(l:model_file, ':h')
   let l:targets = []
   let l:seen = {}
   let l:configs =
@@ -849,7 +846,58 @@ function! s:Targets(build_dir) abort
     let l:configs = l:matching_configs
   endif
   for l:config in l:configs
-    " 기존 내부 코드 그대로 유지
+    for l:reference in get(l:config, 'targets', [])
+      let l:json_file =
+            \ get(
+            \ l:reference,
+            \ 'jsonFile',
+            \ '')
+      if empty(l:json_file)
+        continue
+      endif
+      let l:target_file =
+            \ l:reply
+            \ . '/'
+            \ . l:json_file
+      let l:data = s:ReadJSON(l:target_file)
+      if empty(l:data)
+        continue
+      endif
+      let l:name =
+            \ get(
+            \ l:data,
+            \ 'name',
+            \ get(l:reference, 'name', ''))
+      if empty(l:name)
+            \ || has_key(l:seen, l:name)
+        continue
+      endif
+      let l:artifacts = []
+      for l:artifact in get(l:data, 'artifacts', [])
+        let l:path = get(l:artifact, 'path', '')
+        if empty(l:path)
+          continue
+        endif
+        if l:path !~# '^/'
+          let l:path =
+                \ a:build_dir
+                \ . '/'
+                \ . l:path
+        endif
+        call add(
+              \ l:artifacts,
+              \ simplify(
+              \ fnamemodify(
+              \ l:path,
+              \ ':p')))
+      endfor
+      let l:seen[l:name] = 1
+      call add(l:targets, {
+            \ 'name': l:name,
+            \ 'type': get(l:data, 'type', ''),
+            \ 'artifacts': l:artifacts
+            \ })
+    endfor
   endfor
   return l:targets
 endfunction
@@ -926,6 +974,7 @@ function! universal_cmake#run() abort
   call s:SyncPresetState()
   let l:target = s:CurrentTarget()
   if empty(l:target)
+    echoerr '실행 가능한 target을 찾을 수 없습니다.'
     return
   endif
   if empty(l:target.artifacts)
