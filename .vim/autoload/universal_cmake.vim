@@ -4,7 +4,7 @@ endif
 let g:loaded_universal_cmake_autoload = 1
 
 let s:projects = {}
-let s:gdb_job = -1
+let s:gdb_buf = -1
 let s:clangd_dirs = {}
 
 " ============================================================
@@ -1050,7 +1050,7 @@ endfunction
 " GDB
 " ============================================================
 function! s:GdbExit(job, status) abort
-  let s:gdb_job = -1
+  let s:gdb_buf = -1
   echo 'GDB 종료'
 endfunction
 
@@ -1059,8 +1059,9 @@ function! universal_cmake#gdb() abort
     echoerr 'gdb가 설치되어 있지 않습니다.'
     return
   endif
-  if s:gdb_job != -1
-        \ && job_status(s:gdb_job) ==# 'run'
+  if s:gdb_buf != -1
+        \ && bufexists(s:gdb_buf)
+        \ && job_status(term_getjob(s:gdb_buf)) ==# 'run'
     echoerr '이미 실행 중인 GDB가 있습니다.'
     return
   endif
@@ -1076,7 +1077,7 @@ function! universal_cmake#gdb() abort
   setlocal bufhidden=wipe
         \ nobuflisted
         \ noswapfile
-  let s:gdb_job =
+  let s:gdb_buf =
         \ term_start(
         \ [
         \ 'gdb',
@@ -1089,18 +1090,19 @@ function! universal_cmake#gdb() abort
         \ 'exit_cb': function('s:GdbExit')
         \ })
   call term_sendkeys(
-        \ s:gdb_job,
+        \ s:gdb_buf,
         \ "break main\nrun\n")
 endfunction
 
 function! universal_cmake#gdb_send(cmd) abort
-  if s:gdb_job == -1
-        \ || job_status(s:gdb_job) !=# 'run'
+  if s:gdb_buf == -1
+        \ || !bufexists(s:gdb_buf)
+        \ || job_status(term_getjob(s:gdb_buf)) !=# 'run'
     echoerr '실행 중인 GDB를 찾을 수 없습니다.'
     return
   endif
   call term_sendkeys(
-        \ s:gdb_job,
+        \ s:gdb_buf,
         \ a:cmd . "\n")
 endfunction
 
