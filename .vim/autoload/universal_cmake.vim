@@ -555,16 +555,21 @@ function! s:ChooseFallbackConfig() abort
         \ l:configs,
         \ 'Build Configuration 선택:',
         \ l:p.config)
-  if !empty(l:selected)
-    let l:p.config = l:selected
+  if empty(l:selected)
+    return ''
   endif
-  return l:p.config
+  let l:p.config = l:selected
+  return l:selected
 endfunction
 
 function! s:ConfigureFallback() abort
   let l:p = s:Project()
   let l:root = universal_cmake#root()
   let l:config = s:ChooseFallbackConfig()
+  if empty(l:config)
+    echo 'Build Configuration 선택을 취소했습니다.'
+    return 0
+  endif
   let l:build =
         \ s:FallbackBuildDir(l:config)
   call mkdir(l:build, 'p')
