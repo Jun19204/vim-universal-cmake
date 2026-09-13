@@ -27,7 +27,6 @@ Plug 'junegunn/fzf', {'do': { -> fzf#install() }}
 Plug 'junegunn/fzf.vim'
 Plug 'Yggdroot/indentLine'
 Plug 'morhetz/gruvbox'
-Plug 'derekwyatt/vim-fswitch'
 Plug 'pboettch/vim-cmake-syntax'
 call plug#end()
 
@@ -90,7 +89,7 @@ let g:indentLine_color_gui = '#504945'
 " CoC / LSP
 " =================================================================
 nnoremap <F1> :CocCommand document.toggleInlayHint<CR>
-nnoremap <F4> :FSHere<CR>
+nnoremap <silent> <F4> :CocCommand clangd.switchSourceHeader<CR>
 
 nnoremap <silent> K :call CocActionAsync('doHover')<CR>
 nnoremap <silent> gd <Plug>(coc-definition)
@@ -144,19 +143,6 @@ inoremap <silent><expr> <TAB> coc#pum#visible()
 inoremap <expr> <S-TAB> coc#pum#visible()
       \ ? coc#pum#prev(1)
       \ : "\<C-h>"
-
-" =================================================================
-" vim-fswitch
-" =================================================================
-augroup FSwitchPaths
-  autocmd!
-  autocmd BufEnter *.cpp,*.cc,*.c,*.cxx
-        \ let b:fswitchdst = 'h,hpp,hxx' |
-        \ let b:fswitchlocs = 'reg:|src|include|,reg:|src|../include|,../include,.,tests'
-  autocmd BufEnter *.h,*.hpp,*.hxx
-        \ let b:fswitchdst = 'cpp,cc,c,cxx' |
-        \ let b:fswitchlocs = 'reg:|include|src|,reg:|include|../src|,../src,.,tests'
-augroup END
 
 " =================================================================
 " WSL Clipboard
