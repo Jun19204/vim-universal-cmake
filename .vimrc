@@ -45,6 +45,8 @@ set clipboard=unnamedplus
 set signcolumn=yes
 set colorcolumn=100
 set conceallevel=0
+set scrolloff=8
+set sidescrolloff=8
 
 let g:gruvbox_contrast_dark = 'medium'
 let g:gruvbox_bold = 0
