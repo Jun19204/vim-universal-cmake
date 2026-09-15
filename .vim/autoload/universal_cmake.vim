@@ -86,6 +86,13 @@ function! s:ProjectHash() abort
   return sha256(universal_cmake#root())[:15]
 endfunction
 
+function! s:CompileCommandsRecord() abort
+  return s:CacheRoot()
+        \ . '/'
+        \ . s:ProjectHash()
+        \ . '/compile_commands.source'
+endfunction
+
 function! s:FallbackBuildDir(config) abort
   return s:CacheRoot()
         \ . '/'
@@ -236,7 +243,17 @@ function! s:MergePreset(parent, child) abort
   let l:result = copy(a:parent)
   for [l:key, l:value] in items(a:child)
     if l:key !~# '^__'
-      let l:result[l:key] = l:value
+      " CMake preset의 map 필드는 상속 시 항목별로 병합된다.
+      " 특히 environment는 binaryDir의 $env{} 확장에도 사용된다.
+      if index(['environment', 'cacheVariables', 'vendor'], l:key) >= 0
+            \ && type(l:value) == v:t_dict
+            \ && type(get(l:result, l:key, {})) == v:t_dict
+        let l:merged = copy(get(l:result, l:key, {}))
+        call extend(l:merged, l:value, 'force')
+        let l:result[l:key] = l:merged
+      else
+        let l:result[l:key] = l:value
+      endif
     endif
   endfor
   let l:result.__file =
@@ -408,7 +425,44 @@ function! universal_cmake#select_build_preset() abort
   endif
 endfunction
 
-function! s:ExpandPresetValue(value, preset) abort
+function! s:HostSystemName() abort
+  if has('win32') || has('win64')
+    return 'Windows'
+  elseif has('macunix')
+    return 'Darwin'
+  endif
+  return 'Linux'
+endfunction
+
+function! s:ParentEnvValue(name) abort
+  let l:value = getenv(a:name)
+  return type(l:value) == v:t_string ? l:value : ''
+endfunction
+
+function! s:PresetEnvValue(preset, name, stack) abort
+  if index(a:stack, a:name) >= 0
+    echoerr 'Preset environment 순환 참조: ' . a:name
+    return ''
+  endif
+  let l:environment = get(a:preset, 'environment', {})
+  if has_key(l:environment, a:name)
+    let l:value = l:environment[a:name]
+    if l:value is v:null
+      return ''
+    endif
+    if type(l:value) != v:t_string
+      echoerr '잘못된 preset environment 값: ' . a:name
+      return ''
+    endif
+    return s:ExpandPresetValueInternal(
+          \ l:value,
+          \ a:preset,
+          \ a:stack + [a:name])
+  endif
+  return s:ParentEnvValue(a:name)
+endfunction
+
+function! s:ExpandPresetValueInternal(value, preset, stack) abort
   let l:root = universal_cmake#root()
   let l:source = l:root
   let l:generator = get(a:preset, 'generator', '')
@@ -423,10 +477,22 @@ function! s:ExpandPresetValue(value, preset) abort
   let l:value =
         \ substitute(
         \ l:value,
+        \ '\${sourceDirName}',
+        \ escape(fnamemodify(l:source, ':t'), '\&'),
+        \ 'g')
+  let l:value =
+        \ substitute(
+        \ l:value,
         \ '\${sourceParentDir}',
         \ escape(
         \ fnamemodify(l:source, ':h'),
         \ '\&'),
+        \ 'g')
+  let l:value =
+        \ substitute(
+        \ l:value,
+        \ '\${fileDir}',
+        \ escape(get(a:preset, '__dir', l:source), '\&'),
         \ 'g')
   let l:value =
         \ substitute(
@@ -440,7 +506,47 @@ function! s:ExpandPresetValue(value, preset) abort
         \ '\${generator}',
         \ escape(l:generator, '\&'),
         \ 'g')
-  return l:value
+  let l:value =
+        \ substitute(
+        \ l:value,
+        \ '\${pathListSep}',
+        \ has('win32') || has('win64') ? ';' : ':',
+        \ 'g')
+  let l:value =
+        \ substitute(
+        \ l:value,
+        \ '\${hostSystemName}',
+        \ s:HostSystemName(),
+        \ 'g')
+  let l:value =
+        \ substitute(
+        \ l:value,
+        \ '\$penv{\([^}]*\)}',
+        \ '\=s:ParentEnvValue(submatch(1))',
+        \ 'g')
+  let l:value =
+        \ substitute(
+        \ l:value,
+        \ '\$env{\([^}]*\)}',
+        \ '\=s:PresetEnvValue(a:preset, submatch(1), a:stack)',
+        \ 'g')
+
+  " ${dollar} 결과는 다시 매크로로 해석하지 않아야 한다.
+  let l:dollar_marker = nr2char(31)
+  let l:value = substitute(
+        \ l:value,
+        \ '\${dollar}',
+        \ l:dollar_marker,
+        \ 'g')
+  if l:value =~# '\$\%({\|env{\|penv{\)'
+    echoerr '지원하지 않는 preset 매크로: ' . l:value
+    return ''
+  endif
+  return join(split(l:value, l:dollar_marker, 1), '$')
+endfunction
+
+function! s:ExpandPresetValue(value, preset) abort
+  return s:ExpandPresetValueInternal(a:value, a:preset, [])
 endfunction
 
 function! s:PresetBinaryDir(name) abort
@@ -484,7 +590,7 @@ function! s:SyncPresetState() abort
   endif
   let l:p.build_dir =
         \ s:PresetBinaryDir(
-        \ l:p.configure_preset) 
+        \ l:p.configure_preset)
   let l:build_presets =
         \ s:BuildPresetsFor(
         \ l:p.configure_preset)
@@ -558,17 +664,25 @@ function! s:ChooseFallbackConfig() abort
   if empty(l:selected)
     return ''
   endif
+  if l:selected !=# l:p.config
+    let l:p.build_dir = ''
+    let l:p.target = ''
+  endif
   let l:p.config = l:selected
   return l:selected
 endfunction
 
-function! s:ConfigureFallback() abort
+function! s:ConfigureFallback(choose_config) abort
   let l:p = s:Project()
   let l:root = universal_cmake#root()
-  let l:config = s:ChooseFallbackConfig()
-  if empty(l:config)
-    echo 'Build Configuration 선택을 취소했습니다.'
-    return 0
+  if a:choose_config
+    let l:config = s:ChooseFallbackConfig()
+    if empty(l:config)
+      echo 'Build Configuration 선택을 취소했습니다.'
+      return 0
+    endif
+  else
+    let l:config = l:p.config
   endif
   let l:build =
         \ s:FallbackBuildDir(l:config)
@@ -597,12 +711,15 @@ function! s:ConfigureFallback() abort
   return 1
 endfunction
 
-function! universal_cmake#configure() abort
+function! universal_cmake#configure(...) abort
   let l:p = s:Project()
   if !empty(l:p.configure_preset)
     let l:ok = s:ConfigurePreset()
   else
-    let l:ok = s:ConfigureFallback()
+    " 명시적인 :CMakeConfigure는 configuration을 묻고,
+    " Build가 내부 호출할 때는 현재 값을 그대로 사용한다.
+    let l:choose_config = a:0 ? a:1 : 1
+    let l:ok = s:ConfigureFallback(l:choose_config)
   endif
   if l:ok
     echo 'Configure 성공: ' . l:p.build_dir
@@ -613,6 +730,19 @@ endfunction
 " ============================================================
 " CMake Build
 " ============================================================
+function! s:IsMultiConfig(build_dir) abort
+  let l:cache = a:build_dir . '/CMakeCache.txt'
+  if !filereadable(l:cache)
+    return 0
+  endif
+  for l:line in readfile(l:cache)
+    if l:line =~# '^CMAKE_CONFIGURATION_TYPES:[^=]*='
+      return 1
+    endif
+  endfor
+  return 0
+endfunction
+
 function! s:BuildCurrent() abort
   let l:p = s:Project()
   call s:SyncPresetState()
@@ -625,13 +755,19 @@ function! s:BuildCurrent() abort
     echoerr 'Build directory가 없습니다.'
     return 0
   endif
-  return s:Run(
+  let l:cmd =
         \ 'cmake --build '
-        \ . shellescape(l:p.build_dir))
+        \ . shellescape(l:p.build_dir)
+  if s:IsMultiConfig(l:p.build_dir)
+    let l:cmd .=
+          \ ' --config '
+          \ . shellescape(s:ActiveConfig())
+  endif
+  return s:Run(l:cmd)
 endfunction
 
 function! universal_cmake#build() abort
-  if !universal_cmake#configure()
+  if !universal_cmake#configure(0)
     return 0
   endif
   if !s:BuildCurrent()
@@ -663,16 +799,40 @@ function! universal_cmake#compile_commands() abort
   return ''
 endfunction
 
-function! universal_cmake#link_compile_commands() abort
-  let l:source =
-        \ universal_cmake#compile_commands()
+function! s:WriteCompileCommandsRecord(source) abort
+  let l:record = s:CompileCommandsRecord()
+  if !isdirectory(fnamemodify(l:record, ':h'))
+        \ && mkdir(fnamemodify(l:record, ':h'), 'p') == 0
+    echoerr 'compile_commands 링크 기록 디렉터리 생성 실패'
+    return 0
+  endif
+  if writefile([a:source], l:record) != 0
+    echoerr 'compile_commands 링크 기록 실패'
+    return 0
+  endif
+  return 1
+endfunction
+
+function! s:RecordedCompileCommandsSource() abort
+  let l:record = s:CompileCommandsRecord()
+  if !filereadable(l:record)
+    return ''
+  endif
+  let l:lines = readfile(l:record, '', 1)
+  return empty(l:lines) ? '' : l:lines[0]
+endfunction
+
+function! s:LinkCompileCommands(source) abort
+  let l:source = resolve(fnamemodify(a:source, ':p'))
   if empty(l:source)
         \ || !filereadable(l:source)
     echoerr 'compile_commands.json을 찾을 수 없습니다.'
-    return
+    return 0
   endif
   let l:root = universal_cmake#root()
   let l:dest = l:root . '/compile_commands.json'
+  let l:expected = l:source
+
   " 목적지가 존재하지 않으면 새 symbolic link 생성.
   if getftype(l:dest) ==# ''
     call system(
@@ -683,27 +843,65 @@ function! universal_cmake#link_compile_commands() abort
           \ . shellescape(l:dest))
     if v:shell_error != 0
       echoerr 'compile_commands.json 링크 생성 실패'
-      return
+      return 0
+    endif
+    if !s:WriteCompileCommandsRecord(l:expected)
+      return 0
     endif
     echo 'compile_commands.json linked'
-    return
+    return 1
   endif
+
   " 기존 일반 파일은 절대 수정하지 않는다.
   if getftype(l:dest) !=# 'link'
     echo '기존 compile_commands.json 유지: ' . l:dest
-    return
+    return 0
   endif
+
   " 이미 동일한 compile_commands.json을 가리키면 유지.
   let l:current = resolve(l:dest)
-  let l:expected =
-        \ fnamemodify(
-        \ l:source,
-        \ ':p')
   if l:current ==# l:expected
-    return
+    " 이전 버전이 만든 동일한 링크를 안전하게 관리 대상으로 인계한다.
+    return s:WriteCompileCommandsRecord(l:expected)
   endif
-  " 다른 symbolic link도 소유권을 알 수 없으므로 수정하지 않는다.
-  echo '기존 compile_commands.json 심볼릭 링크 유지: ' . l:dest
+
+  " 기록된 대상과 현재 링크가 일치할 때만 플러그인 소유 링크로 본다.
+  let l:recorded = s:RecordedCompileCommandsSource()
+  if empty(l:recorded) || l:current !=# l:recorded
+    echo '사용자 소유 compile_commands.json 링크 유지: ' . l:dest
+    return 0
+  endif
+
+  " 같은 디렉터리에서 임시 링크를 만든 후 원자적으로 교체한다.
+  let l:temporary = l:dest . '.vim-cmake.' . getpid()
+  if getftype(l:temporary) !=# ''
+    echoerr '임시 compile_commands.json 링크가 이미 존재합니다.'
+    return 0
+  endif
+  call system(
+        \ 'ln -s '
+        \ . shellescape(l:expected)
+        \ . ' '
+        \ . shellescape(l:temporary))
+  if v:shell_error != 0
+    echoerr '임시 compile_commands.json 링크 생성 실패'
+    return 0
+  endif
+  if rename(l:temporary, l:dest) != 0
+    call delete(l:temporary)
+    echoerr 'compile_commands.json 링크 교체 실패'
+    return 0
+  endif
+  if !s:WriteCompileCommandsRecord(l:expected)
+    return 0
+  endif
+  echo 'compile_commands.json link updated'
+  return 1
+endfunction
+
+function! universal_cmake#link_compile_commands() abort
+  let l:source = universal_cmake#compile_commands()
+  return s:LinkCompileCommands(l:source)
 endfunction
 
 " ============================================================
@@ -741,7 +939,7 @@ function! universal_cmake#update_clangd() abort
               \ fnamemodify(
               \ l:resolved,
               \ ':h'))
-      endif 
+      endif
     endif
   endif
   " 3. 기존 fallback build directory
@@ -784,11 +982,11 @@ function! universal_cmake#update_clangd() abort
   if get(s:clangd_dirs, l:root, '') ==# l:dir
     return
   endif
-  let s:clangd_dirs[l:root] = l:dir
-  " 7. 프로젝트 root에 compile_commands.json 링크 생성
-  if filereadable(
-        \ l:dir . '/compile_commands.json')
-    call universal_cmake#link_compile_commands()
+  " 7. 링크 동기화가 성공한 뒤에만 현재 DB 상태를 기록한다.
+  let l:source = l:dir . '/compile_commands.json'
+  if filereadable(l:source)
+        \ && s:LinkCompileCommands(l:source)
+    let s:clangd_dirs[l:root] = l:dir
   endif
 endfunction
 
@@ -1057,7 +1255,7 @@ function! universal_cmake#valgrind() abort
   execute '!' . s:Shell(l:cmd)
 endfunction
 
-" ============================================================
+" ========================================================
 " GDB
 " ============================================================
 function! s:GdbExit(job, status) abort
