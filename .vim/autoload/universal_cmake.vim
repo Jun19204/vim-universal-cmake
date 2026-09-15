@@ -921,14 +921,13 @@ function! universal_cmake#select_target() abort
   let l:p = s:Project()
   if empty(l:p.build_dir)
     if !universal_cmake#build()
-      return
+      return 0
     endif
   endif
-  let l:targets =
-        \ s:ExecutableTargets()
+  let l:targets = s:ExecutableTargets()
   if empty(l:targets)
     echoerr '실행 가능한 target을 찾을 수 없습니다.'
-    return
+    return 0
   endif
   let l:names =
         \ map(
@@ -939,10 +938,13 @@ function! universal_cmake#select_target() abort
         \ l:names,
         \ 'Executable Target 선택:',
         \ l:p.target)
-  if !empty(l:selected)
-    let l:p.target = l:selected
-    echo 'Target: ' . l:selected
+  if empty(l:selected)
+    echo 'Target 선택을 취소했습니다.'
+    return 0
   endif
+  let l:p.target = l:selected
+  echo 'Target: ' . l:selected
+  return 1
 endfunction
 
 function! s:CurrentTarget() abort
@@ -1034,8 +1036,17 @@ function! universal_cmake#valgrind() abort
   if !universal_cmake#build()
     return
   endif
+  " Valgrind로 검사할 실행 파일을 명시적으로 선택한다.
+  if !universal_cmake#select_target()
+    return
+  endif
   let l:target = s:CurrentTarget()
   if empty(l:target)
+    echoerr '실행 가능한 target을 찾을 수 없습니다.'
+    return
+  endif
+  if empty(l:target.artifacts)
+    echoerr '실행 가능한 artifact를 찾을 수 없습니다.'
     return
   endif
   let l:cmd =

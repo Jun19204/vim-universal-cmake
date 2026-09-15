@@ -200,7 +200,7 @@ nnoremap <silent> <leader>bk :CMakeBreakpoint<CR>
 " Test / Analysis
 nnoremap <silent> <leader>tb :CMakeTest<CR>
 nnoremap <silent> <leader>tc :CMakeTestCurrent<CR>
-nnoremap <silent> <leader>bv :CMakeValgrind<CR>
+nnoremap <silent> <leader>bv :wall<CR>:CMakeValgrind<CR>
 
 " Project / clangd
 nnoremap <silent> <leader>cs :CMakeStatus<CR>
